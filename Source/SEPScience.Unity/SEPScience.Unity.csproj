@@ -4,18 +4,18 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{124736F5-BFB0-40E7-94D5-BB5E439FC0B1}</ProjectGuid>
+    <ProjectGuid>{76DB9583-E023-41A2-A564-CF0262E6949A}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>SEPScience</RootNamespace>
-    <AssemblyName>SEPScience</AssemblyName>
+    <RootNamespace>SEPScience.Unity</RootNamespace>
+    <AssemblyName>SEPScience.Unity</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>false</DebugSymbols>
-    <DebugType>none</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>Output\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
@@ -23,7 +23,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>none</DebugType>
+    <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>Output\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
@@ -31,35 +31,33 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Assembly-CSharp">
-      <HintPath>..\..\KSP Dev\Kerbal Space Program\KSP_x64_Data\Managed\Assembly-CSharp.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="KSPUtil">
-      <HintPath>..\..\KSP Dev\Kerbal Space Program\KSP_x64_Data\Managed\KSPUtil.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="UnityEngine">
-      <HintPath>..\..\KSP Dev\Kerbal Space Program\KSP_x64_Data\Managed\UnityEngine.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program\KSP_x64_Data\Managed\UnityEngine.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine.UI">
-      <HintPath>..\..\KSP Dev\Kerbal Space Program\KSP_x64_Data\Managed\UnityEngine.UI.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program\KSP_x64_Data\Managed\UnityEngine.UI.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ModuleSEPStation.cs" />
-    <Compile Include="ModuleSEPScienceExperiment.cs" />
+    <Compile Include="Interfaces\IExperimentSection.cs" />
+    <Compile Include="Interfaces\ISEP_Window.cs" />
+    <Compile Include="Interfaces\IVesselSection.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SEPController.cs" />
-    <Compile Include="SEPExperimentHandler.cs" />
-    <Compile Include="SEPRecoveryWatcher.cs" />
-    <Compile Include="SEPUIWindow.cs" />
-    <Compile Include="SEPUtilities.cs" />
+    <Compile Include="CanvasFader.cs" />
+    <Compile Include="ToggleButton.cs" />
+    <Compile Include="Unity\SEP_ExperimentSection.cs" />
+    <Compile Include="Unity\SEP_Style.cs" />
+    <Compile Include="Unity\SEP_VesselSection.cs" />
+    <Compile Include="Unity\SEP_Window.cs" />
+    <Compile Include="Styles.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>copy /y "$(TargetPath)" "C:\Users\DMagic\Documents\KSP\SEP Science\Unity\SEP_UI\Assets\Plugins\"</PostBuildEvent>
+  </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

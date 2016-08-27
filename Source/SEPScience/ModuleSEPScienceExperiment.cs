@@ -133,7 +133,7 @@ namespace SEPScience
 		[KSPField]
 		public string daysRemaining = "";
 
-		private SEPExperimentHandler handler;
+		private SEP_ExperimentHandler handler;
 		private Animation anim;
 		private string failMessage = "";
 		private ExperimentsResultDialog results;
@@ -143,7 +143,7 @@ namespace SEPScience
 		private bool powerIsProblem;
 		private int powerTimer;
 
-		public SEPExperimentHandler Handler
+		public SEP_ExperimentHandler Handler
 		{
 			get { return handler; }
 		}
@@ -178,12 +178,12 @@ namespace SEPScience
 
 			setupEvents();
 
-			requiredPartList = SEPUtilities.parsePartStringList(requiredParts);
-			requiredModuleList = SEPUtilities.parseModuleStringList(requiredModules);
+			requiredPartList = SEP_Utilities.parsePartStringList(requiredParts);
+			requiredModuleList = SEP_Utilities.parseModuleStringList(requiredModules);
 
 			GameEvents.onVesselSituationChange.Add(sitChange);
-			SEPUtilities.onWindowSpawn.Add(onWindowSpawn);
-			SEPUtilities.onWindowDestroy.Add(onWindowDestroy);
+			SEP_Utilities.onWindowSpawn.Add(onWindowSpawn);
+			SEP_Utilities.onWindowDestroy.Add(onWindowDestroy);
 		}
 
 		private void setupEvents()
@@ -221,8 +221,8 @@ namespace SEPScience
 		private void OnDestroy()
 		{
 			GameEvents.onVesselSituationChange.Remove(sitChange);
-			SEPUtilities.onWindowSpawn.Remove(onWindowSpawn);
-			SEPUtilities.onWindowDestroy.Remove(onWindowDestroy);
+			SEP_Utilities.onWindowSpawn.Remove(onWindowSpawn);
+			SEP_Utilities.onWindowDestroy.Remove(onWindowDestroy);
 		}
 
 		private void Update()
@@ -381,17 +381,17 @@ namespace SEPScience
 				yield return null;
 			}
 
-			if (SEPController.Instance.vesselLoaded(vessel))
+			if (SEP_Controller.Instance.VesselLoaded(vessel))
 			{
-				handler = SEPController.Instance.getHandler(vessel, part.flightID);
+				handler = SEP_Controller.Instance.getHandler(vessel, part.flightID);
 
 				if (handler == null)
-					handler = new SEPExperimentHandler(this, node);
+					handler = new SEP_ExperimentHandler(this, node);
 				else
 					handler.host = this;
 			}
 			else
-				handler = new SEPExperimentHandler(this, node);
+				handler = new SEP_ExperimentHandler(this, node);
 
 			if (handler == null)
 				yield break;
@@ -522,7 +522,7 @@ namespace SEPScience
 			if (window == null)
 				return;
 
-			if (!SEPUtilities.UIWindowReflectionLoaded)
+			if (!SEP_Utilities.UIWindowReflectionLoaded)
 				return;
 
 			if (FlightGlobals.ActiveVessel == vessel)
@@ -543,13 +543,13 @@ namespace SEPScience
 				}
 				catch (Exception e)
 				{
-					SEPUtilities.log("Error in adding KSP Field to unfocused UI Part Action Window\n{0}", logLevels.error, e);
+					SEP_Utilities.log("Error in adding KSP Field to unfocused UI Part Action Window\n{0}", logLevels.error, e);
 					continue;
 				}
 
 				try
 				{
-					var items = SEPUtilities.UIActionListField(window).GetValue(window) as List<UIPartActionItem>;
+					var items = SEP_Utilities.UIActionListField(window).GetValue(window) as List<UIPartActionItem>;
 
 					int c = items.Count;
 
@@ -563,7 +563,7 @@ namespace SEPScience
 				}
 				catch (Exception e)
 				{
-					SEPUtilities.log("Error in setting KSP Field on unfocused UI Part Action Window\n{0}", logLevels.error, e);
+					SEP_Utilities.log("Error in setting KSP Field on unfocused UI Part Action Window\n{0}", logLevels.error, e);
 				}
 			}
 		}
@@ -715,7 +715,7 @@ namespace SEPScience
 			lastBackgroundCheck = 0;
 			completion = 0;
 
-			SEPController.Instance.updateVessel(vessel);
+			SEP_Controller.Instance.updateVessel(vessel);
 
 			Fields["calibrationLevel"].guiActive = false;
 			Events["ReCalibrate"].active = false;
@@ -805,7 +805,7 @@ namespace SEPScience
 
 				updateHandler(true);
 
-				SEPController.Instance.updateVessel(vessel);
+				SEP_Controller.Instance.updateVessel(vessel);
 
 				Fields["dataCollected"].guiActive = true;
 				Fields["daysRemaining"].guiActive = true;
@@ -826,7 +826,7 @@ namespace SEPScience
 
 			updateHandler(false);
 
-			SEPController.Instance.updateVessel(vessel);
+			SEP_Controller.Instance.updateVessel(vessel);
 
 			Fields["dataCollected"].guiActive = false;
 			Fields["daysRemaining"].guiActive = false;
@@ -867,11 +867,11 @@ namespace SEPScience
 			if (level <= 0)
 				return;
 
-			ScienceData data = SEPUtilities.getScienceData(handler, handler.getExperimentLevel(instantResults), level);
+			ScienceData data = SEP_Utilities.getScienceData(handler, handler.getExperimentLevel(instantResults), level);
 
 			if (data == null)
 			{
-				SEPUtilities.log("Null Science Data returned; something went wrong here...", logLevels.warning);
+				SEP_Utilities.log("Null Science Data returned; something went wrong here...", logLevels.warning);
 				return;
 			}
 
@@ -926,7 +926,7 @@ namespace SEPScience
 
 			if (handler == null)
 			{
-				SEPUtilities.log("SEP Experiment Handler is null; Stopping any experiments...", logLevels.warning);
+				SEP_Utilities.log("SEP Experiment Handler is null; Stopping any experiments...", logLevels.warning);
 				failMessage = "Whoops, something went wrong with the SEP Experiment";
 				return false;
 			}

@@ -32,7 +32,7 @@ using UnityEngine;
 
 namespace SEPScience
 {
-	public static class SEPUtilities
+	public static class SEP_Utilities
 	{
 		public static List<Type> loadedPartModules = new List<Type>();
 		public static bool partModulesLoaded = false;
@@ -86,7 +86,7 @@ namespace SEPScience
 				return;
 			}
 
-			prefab.gameObject.AddOrGetComponent<SEPUIWindow>();
+			prefab.gameObject.AddOrGetComponent<SEP_UIWindow>();
 		}
 
 		public static void assignReflectionMethod()
@@ -165,9 +165,9 @@ namespace SEPScience
 			{
 				string m = s[i];
 
-				for (int j = 0; j < SEPUtilities.loadedPartModules.Count; j++)
+				for (int j = 0; j < SEP_Utilities.loadedPartModules.Count; j++)
 				{
-					Type t = SEPUtilities.loadedPartModules[j];
+					Type t = SEP_Utilities.loadedPartModules[j];
 
 					if (t == null)
 						continue;
@@ -200,7 +200,7 @@ namespace SEPScience
 			return Vessel.GetLandedAtString(v.landedAt);
 		}
 
-		public static ScienceSubject subjectIsValid(SEPExperimentHandler handler)
+		public static ScienceSubject subjectIsValid(SEP_ExperimentHandler handler)
 		{
 			ScienceSubject subject = null;
 
@@ -232,7 +232,7 @@ namespace SEPScience
 			return subject;
 		}
 
-		public static ScienceData getScienceData(SEPExperimentHandler handler, ScienceExperiment exp, int level)
+		public static ScienceData getScienceData(SEP_ExperimentHandler handler, ScienceExperiment exp, int level)
 		{
 			ScienceData data = null;
 
@@ -251,7 +251,7 @@ namespace SEPScience
 			return data;
 		}
 
-		public static ScienceSubject checkAndUpdateRelatedSubjects(SEPExperimentHandler handler, int level, float data, float submitted)
+		public static ScienceSubject checkAndUpdateRelatedSubjects(SEP_ExperimentHandler handler, int level, float data, float submitted)
 		{
 			ScienceSubject subject = null;
 
@@ -534,6 +534,82 @@ namespace SEPScience
 						return " while in space high over " + body.theName + "'s " + b;
 				}
 			}
+		}
+
+		public static float getTotalVesselEC(ProtoVessel v)
+		{
+			double ec = 0;
+
+			int l = v.protoPartSnapshots.Count;
+
+			for (int i = 0; i < l; i++)
+			{
+				ProtoPartSnapshot part = v.protoPartSnapshots[i];
+
+				if (part == null)
+					continue;
+
+				int r = part.resources.Count;
+
+				for (int j = 0; j < r; j++)
+				{
+					ProtoPartResourceSnapshot resource = part.resources[j];
+
+					if (resource == null)
+						continue;
+
+					if (resource.resourceName != "ElectricCharge")
+						continue;
+
+					double amount = 0;
+
+					resource.resourceValues.TryGetValue("amount", ref amount);
+
+					ec += amount;
+				}
+			}
+
+			//log("Vessel EC: {0:N4}", logLevels.warning, ec);
+
+			return (float)ec;
+		}
+
+		public static float getMaxTotalVesselEC(ProtoVessel v)
+		{
+			double ec = 0;
+
+			int l = v.protoPartSnapshots.Count;
+
+			for (int i = 0; i < l; i++)
+			{
+				ProtoPartSnapshot part = v.protoPartSnapshots[i];
+
+				if (part == null)
+					continue;
+
+				int r = part.resources.Count;
+
+				for (int j = 0; j < r; j++)
+				{
+					ProtoPartResourceSnapshot resource = part.resources[j];
+
+					if (resource == null)
+						continue;
+
+					if (resource.resourceName != "ElectricCharge")
+						continue;
+
+					double amount = 0;
+
+					resource.resourceValues.TryGetValue("maxAmount", ref amount);
+
+					ec += amount;
+				}
+			}
+
+			//log("Vessel EC: {0:N4}", logLevels.warning, ec);
+
+			return (float)ec;
 		}
 	}
 

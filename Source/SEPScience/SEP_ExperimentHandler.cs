@@ -30,13 +30,12 @@ using System.Linq;
 
 namespace SEPScience
 {
-	public class SEPExperimentHandler
+	public class SEP_ExperimentHandler
 	{
 		public bool instantResults;
 		public bool canTransmit;
 		public bool experimentRunning;
 		public bool controllerAutoTransmit;
-		public bool controllerCanTransmit;
 		public bool usingECResource;
 		public float xmitDataScalar;
 		public float calibration;
@@ -59,7 +58,7 @@ namespace SEPScience
 
 		private List<ScienceData> storedData = new List<ScienceData>();
 
-		public SEPExperimentHandler(ModuleSEPScienceExperiment mod, ConfigNode node)
+		public SEP_ExperimentHandler(ModuleSEPScienceExperiment mod, ConfigNode node)
 		{
 			//SEPUtilities.log("Creating SEP Handler from module...", logLevels.log);
 
@@ -73,7 +72,6 @@ namespace SEPScience
 			completion = mod.completion;
 			submittedData = mod.submittedData;
 			lastBackgroundCheck = mod.lastBackgroundCheck;
-			controllerCanTransmit = mod.controllerCanTransmit;
 			controllerAutoTransmit = mod.controllerAutoTransmit;
 			usingECResource = mod.usingEC;
 			flightID = mod.flightID;
@@ -90,7 +88,7 @@ namespace SEPScience
 			loaded = true;
 		}
 
-		public SEPExperimentHandler(ProtoPartModuleSnapshot snap, Vessel v)
+		public SEP_ExperimentHandler(ProtoPartModuleSnapshot snap, Vessel v)
 		{
 			//SEPUtilities.log("Creating SEP Handler from config node...", logLevels.log);
 
@@ -117,7 +115,6 @@ namespace SEPScience
 			node.TryGetValue("submittedData", ref submittedData);
 			node.TryGetValue("lastBackgroundCheck", ref lastBackgroundCheck);
 			node.TryGetValue("usingEC", ref usingECResource);
-			node.TryGetValue("controllerCanTransmit", ref controllerCanTransmit);
 			node.TryGetValue("controllerAutoTransmit", ref controllerAutoTransmit);
 			node.TryGetValue("flightID", ref flightID);
 
@@ -171,7 +168,6 @@ namespace SEPScience
 				protoHost.moduleValues.SetValue("completion", completion.ToString());
 				protoHost.moduleValues.SetValue("submittedData", submittedData.ToString());
 				protoHost.moduleValues.SetValue("lastBackgroundCheck", lastBackgroundCheck.ToString());
-				protoHost.moduleValues.SetValue("controllerCanTransmit", controllerCanTransmit.ToString());
 				protoHost.moduleValues.SetValue("controllerAutoTransmit", controllerAutoTransmit.ToString());
 				OnSave(protoHost.moduleValues);
 			}
@@ -192,7 +188,6 @@ namespace SEPScience
 				node.SetValue("completion", completion.ToString());
 				node.SetValue("submittedData", submittedData.ToString());
 				node.SetValue("lastBackgroundCheck", lastBackgroundCheck.ToString());
-				node.SetValue("controllerCanTransmit", controllerCanTransmit.ToString());
 				node.SetValue("controllerAutoTransmit", controllerAutoTransmit.ToString());
 				OnSave(node);
 			}
@@ -232,20 +227,14 @@ namespace SEPScience
 		public void updateController(ModuleSEPStation station)
 		{
 			if (station == null)
-			{
 				controllerAutoTransmit = false;
-				controllerCanTransmit = false;
-			}
 			else
-			{
 				controllerAutoTransmit = station.autoTransmit;
-				controllerCanTransmit = station.transmissionUpgrade;
-			}
 		}
 
 		public float getSubmittedData()
 		{
-			ScienceSubject sub = SEPUtilities.subjectIsValid(this);
+			ScienceSubject sub = SEP_Utilities.subjectIsValid(this);
 
 			if (sub == null)
 				return 0;

@@ -32,7 +32,7 @@ using UnityEngine;
 namespace SEPScience
 {
 	[KSPAddon(KSPAddon.Startup.MainMenu, true)]
-	public class SEPRecoveryWatcher : MonoBehaviour
+	public class SEP_RecoveryWatcher : MonoBehaviour
 	{
 		private static bool loaded;
 
@@ -64,13 +64,13 @@ namespace SEPScience
 			{
 				//SEPUtilities.log("Recovery detected...\nSubject ID - {0}\nScience Recovered - {1:N2}", logLevels.warning, sub.id, sci);
 
-				SEPUtilities.checkAndUpdateRelatedSubjects(subjects, sub, sci);
+				SEP_Utilities.checkAndUpdateRelatedSubjects(subjects, sub, sci);
 			}
 			else if (scene == GameScenes.FLIGHT)
 			{
 				//SEPUtilities.log("Transmission detected...\nSubject ID - {0}\nScience Recovered - {1:N2}", logLevels.warning, sub.id, sci);
 
-				SEPUtilities.checkAndUpdateRelatedSubjects(subjects, sub, sci);
+				SEP_Utilities.checkAndUpdateRelatedSubjects(subjects, sub, sci);
 			}
 		}
 	}

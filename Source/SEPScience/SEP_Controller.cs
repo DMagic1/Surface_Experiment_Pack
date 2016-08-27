@@ -33,19 +33,37 @@ using UnityEngine;
 namespace SEPScience
 {
 	[KSPAddon(KSPAddon.Startup.EveryScene, false)]
-	public class SEPController : MonoBehaviour
+	public class SEP_Controller : MonoBehaviour
 	{
 		private static bool running;
-		private static SEPController instance;
+		private static SEP_Controller instance;
 
+		private const string transmissionNode = "advElectrics";
 		private double lastUpdate;
 		private double updateRate = 3950;
 		private bool setup;
-		private Dictionary<Guid, List<SEPExperimentHandler>> experiments = new Dictionary<Guid,List<SEPExperimentHandler>>();
+		private bool transmissionUpgrade;
+		private Dictionary<Guid, List<SEP_ExperimentHandler>> experiments = new Dictionary<Guid,List<SEP_ExperimentHandler>>();
+		private List<Vessel> experimentVessels = new List<Vessel>();
 
-		public static SEPController Instance
+		public static SEP_Controller Instance
 		{
 			get { return instance; }
+		}
+
+		public bool Setup
+		{
+			get { return setup; }
+		}
+
+		public bool TransmissionUpdgrade
+		{
+			get { return transmissionUpgrade; }
+		}
+
+		public List<Vessel> Vessels
+		{
+			get { return experimentVessels; }
 		}
 
 		private void Start()
@@ -54,11 +72,11 @@ namespace SEPScience
 
 			if (scene == GameScenes.MAINMENU)
 			{
-				if (!SEPUtilities.partModulesLoaded)
-					SEPUtilities.loadPartModules();
+				if (!SEP_Utilities.partModulesLoaded)
+					SEP_Utilities.loadPartModules();
 
-				if (!SEPUtilities.UIWindowReflectionLoaded)
-					SEPUtilities.assignReflectionMethod();
+				if (!SEP_Utilities.UIWindowReflectionLoaded)
+					SEP_Utilities.assignReflectionMethod();
 			}			
 
 			if (!(scene == GameScenes.FLIGHT || scene == GameScenes.TRACKSTATION || scene == GameScenes.SPACECENTER))
@@ -66,6 +84,11 @@ namespace SEPScience
 				running = false;
 				Destroy(gameObject);
 			}
+
+			if (ResearchAndDevelopment.GetTechnologyState(transmissionNode) == RDTech.State.Available)
+				transmissionUpgrade = true;
+			else
+				transmissionUpgrade = false;
 
 			if (running)
 				Destroy(gameObject);
@@ -92,7 +115,7 @@ namespace SEPScience
 
 			for (int i = 0; i < l; i++)
 			{
-				SEPExperimentHandler handler = handlers[i];
+				SEP_ExperimentHandler handler = handlers[i];
 
 				handler.OnDestroy();
 			}
@@ -140,7 +163,7 @@ namespace SEPScience
 			while (UIPartActionController.Instance.windowPrefab == null)
 				yield return null;
 
-			SEPUtilities.attachWindowPrefab();
+			SEP_Utilities.attachWindowPrefab();
 		}
 
 		private IEnumerator startup()
@@ -162,7 +185,7 @@ namespace SEPScience
 
 		private void populateExperiments()
 		{
-			experiments = new Dictionary<Guid, List<SEPExperimentHandler>>();
+			experiments = new Dictionary<Guid, List<SEP_ExperimentHandler>>();
 
 			int l = FlightGlobals.Vessels.Count;
 
@@ -179,7 +202,7 @@ namespace SEPScience
 				if (experiments.ContainsKey(v.id))
 					continue;
 
-				List<SEPExperimentHandler> handlers = new List<SEPExperimentHandler>();
+				List<SEP_ExperimentHandler> handlers = new List<SEP_ExperimentHandler>();
 
 				if (v.loaded)
 				{
@@ -212,7 +235,7 @@ namespace SEPScience
 							if (mod.moduleName != "ModuleSEPScienceExperiment")
 								continue;
 
-							SEPExperimentHandler handler = new SEPExperimentHandler(mod, v);
+							SEP_ExperimentHandler handler = new SEP_ExperimentHandler(mod, v);
 
 							if (handler.loaded)
 								handlers.Add(handler);
@@ -220,7 +243,11 @@ namespace SEPScience
 					}
 				}
 
-				experiments.Add(v.id, handlers);
+				if (handlers.Count > 0)
+				{
+					experiments.Add(v.id, handlers);
+					experimentVessels.Add(v);
+				}
 			}
 
 			setup = true;
@@ -228,7 +255,7 @@ namespace SEPScience
 
 		public void updateVessel(Vessel v)
 		{
-			List<SEPExperimentHandler> modules =
+			List<SEP_ExperimentHandler> modules =
 				(from mod in v.FindPartModulesImplementing<ModuleSEPScienceExperiment>()
 				 where mod.Handler != null
 				 select mod.Handler).ToList();
@@ -238,26 +265,35 @@ namespace SEPScience
 				if (modules.Count > 0)
 					experiments[v.id] = modules;
 				else
+				{
 					experiments.Remove(v.id);
+					experimentVessels.Remove(v);
+				}
 			}
 			else if (modules.Count > 0)
+			{
 				experiments.Add(v.id, modules);
+				experimentVessels.Add(v);
+			}
 		}
 
-		public bool vesselLoaded(Vessel v)
+		public bool VesselLoaded(Vessel v)
 		{
 			return experiments.ContainsKey(v.id);
 		}
 
-		public SEPExperimentHandler getHandler(Vessel v, uint id)
+		public SEP_ExperimentHandler getHandler(Vessel v, uint id)
 		{
-			List<SEPExperimentHandler> handlers = experiments[v.id];
+			if (!experiments.ContainsKey(v.id))
+				return null;
+
+			List<SEP_ExperimentHandler> handlers = experiments[v.id];
 
 			int l = handlers.Count;
 
 			for (int i = 0; i < l; i++)
 			{
-				SEPExperimentHandler handler = handlers[i];
+				SEP_ExperimentHandler handler = handlers[i];
 
 				if (handler == null)
 					continue;
@@ -272,22 +308,30 @@ namespace SEPScience
 			return null;
 		}
 
+		public List<SEP_ExperimentHandler> getHandlers(Vessel v)
+		{
+			if (!experiments.ContainsKey(v.id))
+				return new List<SEP_ExperimentHandler>();
+
+			return experiments[v.id];
+		}
+
 		private void experimentCheck(double time)
 		{
 			int l = experiments.Count;
 
 			if (l > 0)
-				SEPUtilities.log("Performing SEP background check on {0} experiments at time: {1:N0}", logLevels.log, l , time);
+				SEP_Utilities.log("Performing SEP background check on {0} experiments at time: {1:N0}", logLevels.log, l , time);
 
 			for (int i = 0; i < l; i++)
 			{
-				List<SEPExperimentHandler> modules = experiments.ElementAt(i).Value;
+				List<SEP_ExperimentHandler> modules = experiments.ElementAt(i).Value;
 
 				int c = modules.Count;
 
 				for (int j = 0; j < c; j++)
 				{
-					SEPExperimentHandler m = modules[j];
+					SEP_ExperimentHandler m = modules[j];
 
 					if (m == null)
 						continue;
@@ -360,7 +404,7 @@ namespace SEPScience
 
 					m.submittedData = m.getSubmittedData();
 
-					if (m.canTransmit && m.controllerAutoTransmit && m.controllerCanTransmit)
+					if (m.canTransmit && m.controllerAutoTransmit && transmissionUpgrade)
 						transmitted = checkTransmission(m);
 					else
 					{
@@ -391,7 +435,7 @@ namespace SEPScience
 
 							if (flag)
 							{
-								m.addData(SEPUtilities.getScienceData(m, m.getExperimentLevel(level), level));
+								m.addData(SEP_Utilities.getScienceData(m, m.getExperimentLevel(level), level));
 
 								if (m.vessel.loaded && m.host != null)
 								{
@@ -424,7 +468,7 @@ namespace SEPScience
 			}
 		}
 
-		private bool checkTransmission(SEPExperimentHandler exp)
+		private bool checkTransmission(SEP_ExperimentHandler exp)
 		{
 			int level = exp.getMaxLevel(false);
 			float science = exp.currentMaxScience(level);
@@ -435,15 +479,15 @@ namespace SEPScience
 			return false;
 		}
 
-		private bool transmitData(SEPExperimentHandler exp, int level, float submittedData, float newData)
+		private bool transmitData(SEP_ExperimentHandler exp, int level, float submittedData, float newData)
 		{
 			if (exp.vessel.loaded)
 			{
 				List<IScienceDataTransmitter> tranList = exp.vessel.FindPartModulesImplementing<IScienceDataTransmitter>();
-				ScienceData data = SEPUtilities.getScienceData(exp, exp.getExperimentLevel(level), level);
+				ScienceData data = SEP_Utilities.getScienceData(exp, exp.getExperimentLevel(level), level);
 				if (tranList.Count > 0)
 				{
-					SEPUtilities.log("Sending data to vessel comms. {0} devices to choose from. Will try to pick the best one", logLevels.log, tranList.Count);
+					SEP_Utilities.log("Sending data to vessel comms. {0} devices to choose from. Will try to pick the best one", logLevels.log, tranList.Count);
 					tranList.OrderBy(ScienceUtil.GetTransmitterScore).First().TransmitData(new List<ScienceData> { data });
 					return true;
 				}
@@ -468,7 +512,7 @@ namespace SEPScience
 
 				if (transmitterCost == null)
 				{
-					exp.addData(SEPUtilities.getScienceData(exp, exp.getExperimentLevel(level), level));
+					exp.addData(SEP_Utilities.getScienceData(exp, exp.getExperimentLevel(level), level));
 					return false;
 				}
 
@@ -480,13 +524,13 @@ namespace SEPScience
 
 				//SEPUtilities.log("Transmission Cost: {0:N4}EC", logLevels.warning, ecCost);
 
-				if (ecCost > getTotalVesselEC(exp.vessel.protoVessel))
+				if (ecCost > SEP_Utilities.getTotalVesselEC(exp.vessel.protoVessel))
 				{
-					exp.addData(SEPUtilities.getScienceData(exp, exp.getExperimentLevel(level), level));
+					exp.addData(SEP_Utilities.getScienceData(exp, exp.getExperimentLevel(level), level));
 					return false;
 				}
 
-				ScienceSubject sub = SEPUtilities.checkAndUpdateRelatedSubjects(exp, level, newData, submittedData);
+				ScienceSubject sub = SEP_Utilities.checkAndUpdateRelatedSubjects(exp, level, newData, submittedData);
 
 				if (sub == null)
 					return false;
@@ -662,44 +706,6 @@ namespace SEPScience
 			}
 
 			return f;
-		}
-
-		private float getTotalVesselEC(ProtoVessel v)
-		{
-			double ec = 0;
-
-			int l = v.protoPartSnapshots.Count;
-
-			for (int i = 0; i < l; i++)
-			{
-				ProtoPartSnapshot part = v.protoPartSnapshots[i];
-
-				if (part == null)
-					continue;
-
-				int r = part.resources.Count;
-
-				for (int j = 0; j < r; j++)
-				{
-					ProtoPartResourceSnapshot resource = part.resources[j];
-
-					if (resource == null)
-						continue;
-
-					if (resource.resourceName != "ElectricCharge")
-						continue;
-
-					double amount = 0;
-
-					resource.resourceValues.TryGetValue("amount", ref amount);
-
-					ec += amount;
-				}
-			}
-
-			//SEPUtilities.log("Vessel EC: {0:N4}", logLevels.warning, ec);
-
-			return (float)ec;
 		}
 
 		private void consumeResources(ProtoVessel v, float amount)

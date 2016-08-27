@@ -39,8 +39,8 @@ namespace SEPScience
 		public int maxExperiments = 8;
 		[KSPField]
 		public string conductExperimentsEventName = "Begin All Experiments";
-		[KSPField]
-		public string transmitUnlockTech = "";
+		//[KSPField]
+		//public string transmitUnlockTech = "";
 		[KSPField]
 		public float interactionRange = 1.5f;
 		[KSPField(isPersistant = true)]
@@ -55,8 +55,6 @@ namespace SEPScience
 		public string deployEventName = "Deploy";
 		[KSPField]
 		public string retractEventName = "Retract";
-		[KSPField(isPersistant = true)]
-		public bool transmissionUpgrade;
 		[KSPField(isPersistant = true)]
 		public bool autoTransmit;
 		
@@ -111,26 +109,24 @@ namespace SEPScience
 			if (IsDeployed)
 				animator(anim, animationName, 1, 1);
 
-			if (string.IsNullOrEmpty(transmitUnlockTech))
-				transmissionUpgrade = true;
-			else
-			{
-				if (ResearchAndDevelopment.GetTechnologyState(transmitUnlockTech) == RDTech.State.Available)
-					transmissionUpgrade = true;
-				else
-					transmissionUpgrade = false;
-			}
+			//if (string.IsNullOrEmpty(transmitUnlockTech))
+			//	transmissionUpgrade = true;
+			//else
+			//{
+			//	if (ResearchAndDevelopment.GetTechnologyState(transmitUnlockTech) == RDTech.State.Available)
+			//		transmissionUpgrade = true;
+			//	else
+			//		transmissionUpgrade = false;
+			//}
 
-			setupEvents();
-
-			SEPUtilities.onWindowSpawn.Add(onWindowSpawn);
-			SEPUtilities.onWindowDestroy.Add(onWindowDestroy);
+			SEP_Utilities.onWindowSpawn.Add(onWindowSpawn);
+			SEP_Utilities.onWindowDestroy.Add(onWindowDestroy);
 		}
 
 		private void OnDestroy()
 		{
-			SEPUtilities.onWindowSpawn.Remove(onWindowSpawn);
-			SEPUtilities.onWindowDestroy.Remove(onWindowDestroy);
+			SEP_Utilities.onWindowSpawn.Remove(onWindowSpawn);
+			SEP_Utilities.onWindowDestroy.Remove(onWindowDestroy);
 		}
 
 		public override void OnLoad(ConfigNode node)
@@ -163,6 +159,7 @@ namespace SEPScience
 			getConnectedExperiments();
 			setCollectEvent();
 			setControllerFields();
+			setupEvents();
 		}
 
 		private void setupEvents()
@@ -175,7 +172,7 @@ namespace SEPScience
 			Events["RetractEvent"].active = IsDeployed;
 			Events["RetractEvent"].guiName = retractEventName;
 			Events["RetractEvent"].unfocusedRange = interactionRange;
-			Events["toggleAutoTransmit"].active = transmissionUpgrade;
+			Events["toggleAutoTransmit"].active = SEP_Controller.Instance.TransmissionUpdgrade;
 			Events["toggleAutoTransmit"].guiName = autoTransmit ? "Turn Auto Transmit Off" : "Turn Auto Transmit On";
 			Events["toggleAutoTransmit"].unfocusedRange = interactionRange;
 			Events["CollectEvent"].guiName = "Collect Data";
@@ -238,7 +235,7 @@ namespace SEPScience
 			if (window == null)
 				return;
 
-			if (!SEPUtilities.UIWindowReflectionLoaded)
+			if (!SEP_Utilities.UIWindowReflectionLoaded)
 				return;
 
 			if (FlightGlobals.ActiveVessel == vessel)
@@ -259,13 +256,13 @@ namespace SEPScience
 				}
 				catch (Exception e)
 				{
-					SEPUtilities.log("Error in adding KSP Field to unfocused UI Part Action Window\n{0}", logLevels.error, e);
+					SEP_Utilities.log("Error in adding KSP Field to unfocused UI Part Action Window\n{0}", logLevels.error, e);
 					continue;
 				}
 
 				try
 				{
-					var items = SEPUtilities.UIActionListField(window).GetValue(window) as List<UIPartActionItem>;
+					var items = SEP_Utilities.UIActionListField(window).GetValue(window) as List<UIPartActionItem>;
 
 					int c = items.Count;
 
@@ -279,7 +276,7 @@ namespace SEPScience
 				}
 				catch (Exception e)
 				{
-					SEPUtilities.log("Error in setting KSP Field on unfocused UI Part Action Window\n{0}", logLevels.error, e);
+					SEP_Utilities.log("Error in setting KSP Field on unfocused UI Part Action Window\n{0}", logLevels.error, e);
 				}
 			}
 		}
@@ -317,7 +314,7 @@ namespace SEPScience
 		{
 			if (experiments.Count >= maxExperiments)
 			{
-				SEPUtilities.log("SEP Control Station module at capacity...", logLevels.log);
+				SEP_Utilities.log("SEP Control Station module at capacity...", logLevels.log);
 				return;
 			}
 
@@ -368,7 +365,7 @@ namespace SEPScience
 					continue;
 
 				exp.controllerAutoTransmit = autoTransmit;
-				exp.controllerCanTransmit = transmissionUpgrade;
+				//exp.controllerCanTransmit = transmissionUpgrade;
 
 				exp.Handler.updateController(this);
 			}
@@ -635,11 +632,11 @@ namespace SEPScience
 		[KSPEvent(guiActive = false, guiActiveUnfocused = true, externalToEVAOnly = true, active = false)]
 		public void toggleAutoTransmit()
 		{
-			if (!transmissionUpgrade)
-			{
-				Events["toggleAutoTransmit"].active = false;
-				return;
-			}
+			//if (!transmissionUpgrade)
+			//{
+			//	Events["toggleAutoTransmit"].active = false;
+			//	return;
+			//}
 				
 			autoTransmit = !autoTransmit;
 
