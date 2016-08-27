@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<KSPBundleDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" UrlName="sep_prefab" Name="sep_prefab" CreatedTime="-8587293560516048104">
+  <Author />
+  <Info />
+  <Assets>
+    <Asset Name="SEP_Experiment" Path="Assets/Prefabs/SEP_Experiment.prefab" Type="GameObject" Url="Prefabs/SEP_Experiment" AutoLoad="false" />
+    <Asset Name="SEP_Vessel" Path="Assets/Prefabs/SEP_Vessel.prefab" Type="GameObject" Url="Prefabs/SEP_Vessel" AutoLoad="false" />
+    <Asset Name="SEP_Window" Path="Assets/Prefabs/SEP_Window.prefab" Type="GameObject" Url="Prefabs/SEP_Window" AutoLoad="false" />
+  </Assets>
+  <Dependencies />
+</KSPBundleDefinition>

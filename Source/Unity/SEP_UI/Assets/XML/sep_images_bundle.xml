@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<KSPBundleDefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" UrlName="sep_images" Name="sep_images" CreatedTime="-8587293696955194826">
+  <Author />
+  <Info />
+  <Assets>
+    <Asset Name="Connection_Icon" Path="Assets/Images/Connection_Icon.png" Type="Texture2D" Url="Images/Connection_Icon" AutoLoad="false" />
+    <Asset Name="Pause_Icon" Path="Assets/Images/Pause_Icon.png" Type="Texture2D" Url="Images/Pause_Icon" AutoLoad="false" />
+    <Asset Name="Play_Icon" Path="Assets/Images/Play_Icon.png" Type="Texture2D" Url="Images/Play_Icon" AutoLoad="false" />
+    <Asset Name="Radio_Icon" Path="Assets/Images/Radio_Icon.png" Type="Texture2D" Url="Images/Radio_Icon" AutoLoad="false" />
+    <Asset Name="Toolbar_Icon" Path="Assets/Images/Toolbar_Icon.png" Type="Texture2D" Url="Images/Toolbar_Icon" AutoLoad="false" />
+  </Assets>
+  <Dependencies />
+</KSPBundleDefinition>
