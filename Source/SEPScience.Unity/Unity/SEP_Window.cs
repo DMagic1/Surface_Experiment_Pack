@@ -18,6 +18,8 @@ namespace SEPScience.Unity.Unity
 		[SerializeField]
 		private Button closeButton = null;
 		[SerializeField]
+		private Button expandButton = null;
+		[SerializeField]
 		private float fastFadeDuration = 0.2f;
 		[SerializeField]
 		private float slowFadeDuration = 0.5f;
@@ -29,6 +31,9 @@ namespace SEPScience.Unity.Unity
 		private Vector2 mouseStart;
 		private Vector3 windowStart;
 		private RectTransform rect;
+
+		private Vector3 windowResizeStart;
+		private float heightStart;
 
 		private ISEP_Window windowInterface;
 
@@ -55,6 +60,51 @@ namespace SEPScience.Unity.Unity
 			windowInterface.UpdateWindow();
 		}
 
+		public void onBeginResize(BaseEventData eventData)
+		{
+			print("[SEP UI] Begin Drag...");
+
+			if (rect == null)
+				return;
+
+			if (!(eventData is PointerEventData))
+				return;
+
+
+		}
+
+		public void onResize(BaseEventData eventData)
+		{
+			if (rect == null)
+				return;
+
+			if (!(eventData is PointerEventData))
+				return;
+
+			rect.sizeDelta = new Vector2(rect.sizeDelta.x, rect.sizeDelta.y - ((PointerEventData)eventData).delta.y);
+
+			checkMaxResize((int)rect.sizeDelta.y);
+		}
+
+		private void checkMaxResize(int num)
+		{
+			if (rect.sizeDelta.y < 200)
+				num = 200;
+			else if (rect.sizeDelta.y > 800)
+				num = 800;
+
+			rect.sizeDelta = new Vector2(rect.sizeDelta.x, num);
+		}
+
+		public void onEndResize(BaseEventData eventData)
+		{
+			if (!(eventData is PointerEventData))
+				return;
+
+			print("[SEP UI] End Drag...");
+			checkMaxResize((int)rect.sizeDelta.y);
+		}
+
 		public void setWindow(ISEP_Window window)
 		{
 			if (window == null)
@@ -76,8 +126,10 @@ namespace SEPScience.Unity.Unity
 
 		public void OnDrag(PointerEventData eventData)
 		{
-			if (rect != null)
-				rect.position = windowStart + (Vector3)(eventData.position - mouseStart);
+			if (rect == null)
+				return;
+
+			rect.position = windowStart + (Vector3)(eventData.position - mouseStart);
 		}
 
 		public void OnPointerEnter(PointerEventData eventData)
