@@ -40,6 +40,10 @@ namespace SEPScience.SEP_UI
 				sliderBackForeground = processSliderSprites(backSlider, false, ref sliderBackForeColor);
 
 				sliderFrontForeground = processSliderSprites(frontSlider, false, ref sliderFrontForeColor);
+
+				SEP_Utilities.log("slider back background is {0}", logLevels.warning, sliderBackBackground == null ? "Null" : "Loaded");
+				SEP_Utilities.log("slider back foreground is {0}", logLevels.warning, sliderBackForeground == null ? "Null" : "Loaded");
+				SEP_Utilities.log("slider front foreground is {0}", logLevels.warning, sliderFrontForeground == null ? "Null" : "Loaded");
 			}
 
 			SEP_Style[] styles = obj.GetComponentsInChildren<SEP_Style>();
@@ -135,6 +139,9 @@ namespace SEPScience.SEP_UI
 					break;
 				case SEP_Style.ElementTypes.Label:
 					style.setText(getStyle(skin.label, skin.label.normal));
+					break;
+				case SEP_Style.ElementTypes.VertScroll:
+					style.setScrollbar(skin.verticalScrollbar.normal.background, skin.verticalScrollbarThumb.normal.background);
 					break;
 				case SEP_Style.ElementTypes.Slider:
 					style.setSlider(sliderFrontForeground, sliderFrontForeColor);
