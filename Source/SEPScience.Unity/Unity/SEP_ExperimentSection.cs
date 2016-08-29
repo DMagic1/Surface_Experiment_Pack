@@ -12,8 +12,6 @@ namespace SEPScience.Unity.Unity
 		[SerializeField]
 		private Text Title = null;
 		[SerializeField]
-		private Toggle Toggle = null;
-		[SerializeField]
 		private Slider BaseSlider = null;
 		[SerializeField]
 		private Slider FrontSlider = null;
@@ -51,8 +49,8 @@ namespace SEPScience.Unity.Unity
 			if (ToggleBackground != null && PlayIcon != null && PauseIcon != null)
 				ToggleBackground.sprite = experimentInterface.IsRunning ? PauseIcon : PlayIcon;
 
-			if (Toggle != null)
-				Toggle.isOn = !experimentInterface.IsRunning;
+			//if (Play != null)
+			//	Play.isOn = !experimentInterface.IsRunning;
 		}
 
 		public void toggleVisibility(bool on)
@@ -89,6 +87,12 @@ namespace SEPScience.Unity.Unity
 			if (Remaining != null)
 				Remaining.text = experimentInterface.DaysRemaining;
 
+			//if (Play != null)
+			//{
+			//	Play.isOn = !experimentInterface.IsRunning;
+			//	Play.setSpriteStart(PauseIcon, PlayIcon, ColorTintAndSpriteSwapToggle);
+			//}
+
 			if (ToggleBackground != null && PlayIcon != null && PauseIcon != null)
 				ToggleBackground.sprite = experimentInterface.IsRunning ? PauseIcon : PlayIcon;
 
@@ -100,21 +104,21 @@ namespace SEPScience.Unity.Unity
 			}
 		}
 
-		public void toggleExperiment(bool on)
+		public void toggleExperiment()
 		{
-			if (experimentInterface != null)
+			if (experimentInterface == null)
 				return;
 
 			print("[SEP UI] Toggle Experiment...");
 
-			experimentInterface.ToggleExperiment(on);
+			experimentInterface.ToggleExperiment(!experimentInterface.IsRunning);
 
-			if (Toggle == null || ToggleBackground == null || PlayIcon == null || PauseIcon == null)
+			if (ToggleBackground == null || PlayIcon == null || PauseIcon == null)
 				return;
 
 			print("[SEP UI] Toggle Play/Pause Sprite");
 
-			ToggleBackground.sprite = on ? PauseIcon : PlayIcon;
+			ToggleBackground.sprite = experimentInterface.IsRunning ? PauseIcon : PlayIcon;
 		}
 
 	}
