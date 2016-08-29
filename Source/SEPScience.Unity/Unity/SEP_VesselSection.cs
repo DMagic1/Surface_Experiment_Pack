@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using SEPScience.Unity.Interfaces;
 
 namespace SEPScience.Unity.Unity
@@ -26,6 +27,8 @@ namespace SEPScience.Unity.Unity
 		[SerializeField]
 		private Text TotalEC = null;
 		[SerializeField]
+		private Text ExpCount = null;
+		[SerializeField]
 		private Text VesselTitle = null;
 		[SerializeField]
 		private Text SituationText = null;
@@ -38,10 +41,18 @@ namespace SEPScience.Unity.Unity
 		[SerializeField]
 		private Transform ExperimentSectionTransform = null;
 
+		private Color vesselGreen = new Color(0.552941f, 1, 0, 1);
+		private Color white = new Color(1, 1, 1, 1); 
 		private Color green = new Color(0.345098f, 1, .082353f, 1);
 		private Color grey = new Color(0.329412f, 0.329412f, 0.329412f, 1);
 		private IVesselSection vesselInterface;
+		private SEP_Window window;
 		private List<SEP_ExperimentSection> experiments = new List<SEP_ExperimentSection>();
+
+		private void OnDestroy()
+		{
+
+		}
 
 		private void Update()
 		{
@@ -51,13 +62,13 @@ namespace SEPScience.Unity.Unity
 			if (!vesselInterface.IsVisible)
 				return;
 
-			//if (Transmission != null)
-			//	Transmission.isOn = vesselInterface.CanTransmit;
-
 			vesselInterface.Update();
 
 			if (TotalEC != null)
 				TotalEC.text = vesselInterface.ECTotal;
+
+			if (ExpCount != null)
+				ExpCount.text = vesselInterface.ExpCount;
 
 			//if (Connection != null)
 			//	Connection.sprite = vesselInterface.IsConnected ? ConnectedSprite : DisconnectedSprite;
@@ -79,10 +90,12 @@ namespace SEPScience.Unity.Unity
 			}
 		}
 
-		public void setVessel(IVesselSection vessel)
+		public void setVessel(IVesselSection vessel, SEP_Window win)
 		{
 			if (vessel == null)
 				return;
+
+			window = win;
 
 			vesselInterface = vessel;
 
@@ -116,6 +129,46 @@ namespace SEPScience.Unity.Unity
 				else
 					StartAll.gameObject.SetActive(false);
 			}
+
+			vesselInterface.setParent(this);
+		}
+
+		public void onPointerEnterTitle(BaseEventData eventData)
+		{
+			if (VesselTitle == null)
+				return;
+
+			if (!(eventData is PointerEventData))
+				return;
+
+			VesselTitle.color = vesselGreen;
+
+			eventData.Reset();
+		}
+
+		public void onPointerExitTitle(BaseEventData eventData)
+		{
+			if (VesselTitle == null)
+				return;
+
+			if (!(eventData is PointerEventData))
+				return;
+
+			VesselTitle.color = white;
+		}
+
+		public void onScroll(BaseEventData eventData)
+		{
+			if (!(eventData is PointerEventData))
+				return;
+
+			if (window == null)
+				return;
+
+			if (window.ScrollRect == null)
+				return;
+
+			window.ScrollRect.OnScroll((PointerEventData)eventData);
 		}
 
 		public void setTransmission()
@@ -164,14 +217,10 @@ namespace SEPScience.Unity.Unity
 			if (vesselInterface == null)
 				return;
 
-			print("[SEP UI] Start All Experiments...");
-
 			vesselInterface.StartAll();
 
 			if (StartAll != null && PauseAll != null)
 			{
-				print("[SEP UI] Setting Start Button Inactive...");
-
 				PauseAll.gameObject.SetActive(false);
 
 				StartAll.gameObject.SetActive(true);
@@ -183,18 +232,31 @@ namespace SEPScience.Unity.Unity
 			if (vesselInterface == null)
 				return;
 
-			print("[SEP UI] Pause All Experiments...");
-
 			vesselInterface.PauseAll();
 
 			if (StartAll != null && PauseAll != null)
 			{
-				print("[SEP UI] Setting Pause Button Inactive...");
-
 				PauseAll.gameObject.SetActive(true);
 
 				StartAll.gameObject.SetActive(false);
 			}
+		}
+
+		public void AddExperimentSection(IExperimentSection section)
+		{
+			if (section == null)
+				return;
+
+			CreateExperimentSection(section);
+		}
+
+		public void RemoveExperimentSection(SEP_ExperimentSection section)
+		{
+			if (section == null)
+				return;
+
+			if (experiments.Contains(section))
+				experiments.Remove(section);
 		}
 
 		private void CreateExperimentSections(IList<IExperimentSection> sections)
@@ -235,7 +297,12 @@ namespace SEPScience.Unity.Unity
 			if (experiment == null)
 				return;
 
-			experiment.setExperiment(section);
+			experiment.setExperiment(section, this);
+
+			if (Minimize != null)
+				experiment.toggleVisibility(Minimize.isOn);
+			else
+				experiment.toggleVisibility(true);
 
 			experiments.Add(experiment);
 		}
