@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using SEPScience.Unity.Interfaces;
+using UnityEngine;
 
 namespace SEPScience.SEP_UI.Windows
 {
@@ -17,6 +18,7 @@ namespace SEPScience.SEP_UI.Windows
 		private float _progress;
 
 		private Vessel vessel;
+		private SEPScience.Unity.Unity.SEP_ExperimentSection experimentUISection;
 		private SEP_ExperimentHandler handler;
 
 		public SEP_ExperimentSection(SEP_ExperimentHandler h, Vessel v)
@@ -37,6 +39,11 @@ namespace SEPScience.SEP_UI.Windows
 			_progress = h.completion;
 			_calibration = h.calibration;
 			_isrunning = h.experimentRunning;
+		}
+
+		public void OnDestroy()
+		{
+			MonoBehaviour.Destroy(experimentUISection);
 		}
 
 		public string Name
@@ -75,6 +82,11 @@ namespace SEPScience.SEP_UI.Windows
 			get { return _cantransmit; }
 		}
 
+		public SEP_ExperimentHandler Handler
+		{
+			get { return handler; }
+		}
+
 		public void ToggleExperiment(bool on)
 		{
 			if (on && !handler.experimentRunning)
@@ -100,6 +112,11 @@ namespace SEPScience.SEP_UI.Windows
 			}
 		}
 
+		public void setParent(SEPScience.Unity.Unity.SEP_ExperimentSection section)
+		{
+			experimentUISection = section;
+		}
+
 		public void Update()
 		{
 			if (handler == null)
@@ -116,13 +133,16 @@ namespace SEPScience.SEP_UI.Windows
 			if (handler == null)
 				return "Error...";
 
-			if (!handler.experimentRunning)
-				return "";
-
 			float next = getNextCompletion(handler.completion);
+
+			if (handler.completion >= next)
+				return "Complete";
 
 			if (handler.calibration <= 0)
 				return "∞";
+
+			if (!handler.experimentRunning)
+				return "";
 
 			float time = handler.experimentTime / handler.calibration;
 
