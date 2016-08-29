@@ -20,6 +20,8 @@ namespace SEPScience.Unity.Unity
 		[SerializeField]
 		private Button expandButton = null;
 		[SerializeField]
+		private ScrollRect scrollRect = null;
+		[SerializeField]
 		private float fastFadeDuration = 0.2f;
 		[SerializeField]
 		private float slowFadeDuration = 0.5f;
@@ -32,10 +34,12 @@ namespace SEPScience.Unity.Unity
 		private Vector3 windowStart;
 		private RectTransform rect;
 
-		private Vector3 windowResizeStart;
-		private float heightStart;
-
 		private ISEP_Window windowInterface;
+
+		public ScrollRect ScrollRect
+		{
+			get { return scrollRect; }
+		}
 
 		protected override void Awake()
 		{
@@ -58,19 +62,6 @@ namespace SEPScience.Unity.Unity
 				return;
 
 			windowInterface.UpdateWindow();
-		}
-
-		public void onBeginResize(BaseEventData eventData)
-		{
-			print("[SEP UI] Begin Drag...");
-
-			if (rect == null)
-				return;
-
-			if (!(eventData is PointerEventData))
-				return;
-
-
 		}
 
 		public void onResize(BaseEventData eventData)
@@ -101,7 +92,6 @@ namespace SEPScience.Unity.Unity
 			if (!(eventData is PointerEventData))
 				return;
 
-			print("[SEP UI] End Drag...");
 			checkMaxResize((int)rect.sizeDelta.y);
 		}
 
@@ -139,12 +129,15 @@ namespace SEPScience.Unity.Unity
 
 		public void OnPointerExit(PointerEventData eventData)
 		{
-			Fade(0.6f, slowFadeDuration);
+			FadeOut();
 		}
 
 		public void OnClose()
 		{
-			close();
+			if (windowInterface == null)
+				return;
+
+			windowInterface.SetAppState(false);
 		}
 
 		public void MinimizeToggle(bool max)
@@ -160,6 +153,11 @@ namespace SEPScience.Unity.Unity
 		public void FadeIn()
 		{
 			Fade(1, fastFadeDuration);
+		}
+
+		public void FadeOut()
+		{
+			Fade(0.6f, slowFadeDuration);
 		}
 
 		private void setSize(bool max)
@@ -208,7 +206,7 @@ namespace SEPScience.Unity.Unity
 			if (vSection == null)
 				return;
 
-			vSection.setVessel(section);
+			vSection.setVessel(section, this);
 		}
 
 		public void addVesselSection(GameObject obj)
@@ -219,15 +217,13 @@ namespace SEPScience.Unity.Unity
 
 		public void close()
 		{
-			Fade(0, slowFadeDuration, Destroy);
-
-			gameObject.SetActive(false);
+			Fade(0, fastFadeDuration, Hide);
 		}
 
-		private void Destroy()
+		private void Hide()
 		{
 			gameObject.SetActive(false);
-			Destroy(gameObject);
+			//Destroy(gameObject);
 		}
 	}
 }
