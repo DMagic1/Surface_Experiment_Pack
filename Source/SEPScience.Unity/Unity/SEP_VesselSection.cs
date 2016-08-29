@@ -9,8 +9,8 @@ namespace SEPScience.Unity.Unity
 {
 	public class SEP_VesselSection : MonoBehaviour
 	{
-		[SerializeField]
-		private Toggle Transmission = null;
+		//[SerializeField]
+		//private Toggle Transmission = null;
 		[SerializeField]
 		private Image TransmissionBackground = null;
 		//[SerializeField]
@@ -118,12 +118,12 @@ namespace SEPScience.Unity.Unity
 			}
 		}
 
-		public void setTransmission(bool transmit)
+		public void setTransmission()
 		{
 			if (vesselInterface == null)
 				return;
 
-			vesselInterface.CanTransmit = transmit && vesselInterface.AutoTransmitAvailable;
+			vesselInterface.CanTransmit = !vesselInterface.CanTransmit && vesselInterface.AutoTransmitAvailable;
 
 			if (TransmissionBackground != null)
 			{
@@ -170,9 +170,11 @@ namespace SEPScience.Unity.Unity
 
 			if (StartAll != null && PauseAll != null)
 			{
-				PauseAll.gameObject.SetActive(true);
+				print("[SEP UI] Setting Start Button Inactive...");
 
-				StartAll.gameObject.SetActive(false);
+				PauseAll.gameObject.SetActive(false);
+
+				StartAll.gameObject.SetActive(true);
 			}
 		}
 
@@ -187,9 +189,11 @@ namespace SEPScience.Unity.Unity
 
 			if (StartAll != null && PauseAll != null)
 			{
-				PauseAll.gameObject.SetActive(false);
+				print("[SEP UI] Setting Pause Button Inactive...");
 
-				StartAll.gameObject.SetActive(true);
+				PauseAll.gameObject.SetActive(true);
+
+				StartAll.gameObject.SetActive(false);
 			}
 		}
 
