@@ -230,10 +230,10 @@ namespace SEPScience
 			if (!FlightGlobals.ready)
 				return;
 
-			if (experimentRunning && controller != null)
+			if (IsDeployed && controller != null)
 			{
 				if (vessel != controller.vessel)
-					PauseExperiment();
+					RetractEvent();
 			}
 
 			if (UIPartActionController.Instance == null)
@@ -639,6 +639,8 @@ namespace SEPScience
 
 			setController(findController());
 
+			SEP_Utilities.onExperimentActivate.Fire(vessel, handler);
+
 			powerIsProblem = false;
 
 			updateHandler(true);
@@ -711,6 +713,8 @@ namespace SEPScience
 			submittedData = 0;
 
 			updateHandler(false);
+
+			SEP_Utilities.onExperimentDeactivate.Fire(handler.vessel, handler);
 
 			lastBackgroundCheck = 0;
 			completion = 0;
