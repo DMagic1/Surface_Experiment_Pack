@@ -12,6 +12,8 @@ namespace SEPScience.Unity.Interfaces
 
 		IList<IVesselSection> GetVessels();
 
+		void SetAppState(bool on);
+
 		void ProcessStyle(GameObject obj);
 
 		void UpdateWindow();
