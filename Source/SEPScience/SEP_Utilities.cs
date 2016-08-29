@@ -39,6 +39,8 @@ namespace SEPScience
 
 		public static EventData<UIPartActionWindow> onWindowSpawn = new EventData<UIPartActionWindow>("onWindowSpawn");
 		public static EventData<UIPartActionWindow> onWindowDestroy = new EventData<UIPartActionWindow>("onWindowDestroy");
+		public static EventData<Vessel, SEP_ExperimentHandler> onExperimentActivate = new EventData<Vessel, SEP_ExperimentHandler>("onExperimentActivate");
+		public static EventData<Vessel, SEP_ExperimentHandler> onExperimentDeactivate = new EventData<Vessel, SEP_ExperimentHandler>("onExperimentDeactivate");
 
 		private static FieldInfo actionListField;
 		public static bool UIWindowReflectionLoaded = false;
