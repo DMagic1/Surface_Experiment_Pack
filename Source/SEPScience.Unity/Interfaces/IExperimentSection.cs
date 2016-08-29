@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿
+using SEPScience.Unity.Unity;
 
 namespace SEPScience.Unity.Interfaces
 {
@@ -23,6 +21,8 @@ namespace SEPScience.Unity.Interfaces
 		bool CanTransmit { get; }
 
 		void ToggleExperiment(bool on);
+
+		void setParent(SEP_ExperimentSection section);
 
 		void Update();
 	}
