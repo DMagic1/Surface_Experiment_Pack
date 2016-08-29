@@ -1,6 +1,9 @@
-﻿using System;
+﻿
+
 using System.Collections.Generic;
 using UnityEngine;
+using SEPScience.Unity.Unity;
+
 namespace SEPScience.Unity.Interfaces
 {
 	public interface IVesselSection
@@ -17,11 +20,15 @@ namespace SEPScience.Unity.Interfaces
 
 		string Situation { get; }
 
+		string ExpCount { get; }
+
 		bool IsVisible { get; set; }
 
 		IList<IExperimentSection> GetExperiments();
 
 		void ProcessStyle(GameObject obj);
+
+		void setParent(SEP_VesselSection section);
 
 		void PauseAll();
 
