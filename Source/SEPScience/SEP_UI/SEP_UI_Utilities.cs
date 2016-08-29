@@ -11,10 +11,6 @@ namespace SEPScience.SEP_UI
 {
 	public static class SEP_UI_Utilities
 	{
-		private static GameObject sep_WindowPrefab;
-		private static GameObject sep_VesselPrefab;
-		private static GameObject sep_ExpPrefab;
-		private static ExperimentsResultDialog scienceDialogPrefab;
 		private static Sprite sliderFrontForeground;
 		private static Sprite sliderBackBackground;
 		private static Sprite sliderBackForeground;
@@ -27,23 +23,22 @@ namespace SEPScience.SEP_UI
 			if (obj == null)
 				return;
 
-			if (scienceDialogPrefab == null)
+			if (sliderFrontForeground == null || sliderBackBackground == null || sliderBackForeground == null)
 			{
-				scienceDialogPrefab = UnityEngine.Object.Instantiate<GameObject>(AssetBase.GetPrefab("ScienceResultsDialog")).GetComponent<ExperimentsResultDialog>();
+				ExperimentsResultDialog scienceDialogPrefab = UnityEngine.Object.Instantiate<GameObject>(AssetBase.GetPrefab("ScienceResultsDialog")).GetComponent<ExperimentsResultDialog>();
 
-				Slider[] sliders = scienceDialogPrefab.GetComponentsInChildren<Slider>();;
+				if (scienceDialogPrefab != null)
+				{
+					Slider[] sliders = scienceDialogPrefab.GetComponentsInChildren<Slider>(); ;
 
-				Slider backSlider = sliders[0];
-				Slider frontSlider = sliders[1];
+					Slider backSlider = sliders[0];
+					Slider frontSlider = sliders[1];
 
-				sliderBackBackground = processSliderSprites(backSlider, true, ref sliderBackBackColor);
-				sliderBackForeground = processSliderSprites(backSlider, false, ref sliderBackForeColor);
+					sliderBackBackground = processSliderSprites(backSlider, true, ref sliderBackBackColor);
+					sliderBackForeground = processSliderSprites(backSlider, false, ref sliderBackForeColor);
 
-				sliderFrontForeground = processSliderSprites(frontSlider, false, ref sliderFrontForeColor);
-
-				SEP_Utilities.log("slider back background is {0}", logLevels.warning, sliderBackBackground == null ? "Null" : "Loaded");
-				SEP_Utilities.log("slider back foreground is {0}", logLevels.warning, sliderBackForeground == null ? "Null" : "Loaded");
-				SEP_Utilities.log("slider front foreground is {0}", logLevels.warning, sliderFrontForeground == null ? "Null" : "Loaded");
+					sliderFrontForeground = processSliderSprites(frontSlider, false, ref sliderFrontForeColor);
+				}
 			}
 
 			SEP_Style[] styles = obj.GetComponentsInChildren<SEP_Style>();
@@ -52,9 +47,7 @@ namespace SEPScience.SEP_UI
 				return;
 
 			for (int i = 0; i < styles.Length; i++)
-			{
 				processCompenents(styles[i]);
-			}
 		}
 
 		private static Sprite processSliderSprites(Slider slider, bool back, ref Color color)
