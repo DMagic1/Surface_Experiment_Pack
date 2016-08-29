@@ -12,7 +12,7 @@ namespace SEPScience.SEP_UI.Windows
 		private string _name;
 		private string _ectotal;
 		private string _situation;
-		private bool _isvisible;
+		private bool _isvisible = true;
 		private bool _cantransmit;
 		private bool _isconnected;
 		private bool _transmitavailable;
@@ -62,7 +62,10 @@ namespace SEPScience.SEP_UI.Windows
 
 		public void Update()
 		{
-			if (!_isvisible)
+			if (vessel == null)
+				return;
+
+			if (vessel.protoVessel == null)
 				return;
 
 			currentVesselEC = SEP_Utilities.getTotalVesselEC(vessel.protoVessel);
@@ -74,7 +77,10 @@ namespace SEPScience.SEP_UI.Windows
 
 		private string getECString()
 		{
-			return string.Format("{0:N0} / {1:N0} EC", currentVesselEC, maxVesselEC);
+			if (vessel.loaded)
+				return string.Format("{0:N0} / {1:N0} EC", currentVesselEC, maxVesselEC);
+			else
+				return "";
 		}
 
 		private string getSituationString()
