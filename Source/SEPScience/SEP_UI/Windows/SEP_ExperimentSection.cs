@@ -11,7 +11,7 @@ namespace SEPScience.SEP_UI.Windows
 		private string _name;
 		private string _daysremaining;
 		private bool _isrunning;
-		private bool _isvisible;
+		private bool _isvisible = true;
 		private bool _cantransmit;
 		private float _calibration;
 		private float _progress;
@@ -108,12 +108,16 @@ namespace SEPScience.SEP_UI.Windows
 			_daysremaining = getDaysRemaining();
 			_progress = handler.completion;
 			_calibration = handler.calibration;
+			_isrunning = handler.experimentRunning;
 		}
 
 		private string getDaysRemaining()
 		{
 			if (handler == null)
 				return "Error...";
+
+			if (!handler.experimentRunning)
+				return "";
 
 			float next = getNextCompletion(handler.completion);
 
