@@ -12,6 +12,7 @@ namespace SEPScience.SEP_UI.Windows
 		private string _name;
 		private string _ectotal;
 		private string _situation;
+		private string _expcount;
 		private bool _isvisible = true;
 		private bool _cantransmit;
 		private bool _isconnected;
@@ -21,6 +22,7 @@ namespace SEPScience.SEP_UI.Windows
 		private double currentVesselEC;
 
 		private Vessel vessel;
+		private SEPScience.Unity.Unity.SEP_VesselSection vesselUISection;
 		private List<SEP_ExperimentHandler> experiments = new List<SEP_ExperimentHandler>();
 		private List<SEP_ExperimentSection> experimentSections = new List<SEP_ExperimentSection>();
 
@@ -50,14 +52,20 @@ namespace SEPScience.SEP_UI.Windows
 			experimentSections = new List<SEP_ExperimentSection>();
 			addExperimentSections();
 
+			_expcount = getExpCountString();
+
 			GameEvents.onVesselWasModified.Add(onVesselModified);
 			GameEvents.onVesselSituationChange.Add(onVesselSituationChange);
+			SEP_Utilities.onExperimentActivate.Add(onAddExperiment);
+			SEP_Utilities.onExperimentDeactivate.Add(onRemoveExperiment);
 		}
 
 		public void OnDestroy()
 		{
 			GameEvents.onVesselWasModified.Remove(onVesselModified);
 			GameEvents.onVesselSituationChange.Remove(onVesselSituationChange);
+			SEP_Utilities.onExperimentActivate.Remove(onAddExperiment);
+			SEP_Utilities.onExperimentDeactivate.Remove(onRemoveExperiment);
 		}
 
 		public void Update()
@@ -68,11 +76,19 @@ namespace SEPScience.SEP_UI.Windows
 			if (vessel.protoVessel == null)
 				return;
 
-			currentVesselEC = SEP_Utilities.getTotalVesselEC(vessel.protoVessel);
+			if (vessel.loaded)
+				currentVesselEC = SEP_Utilities.getTotalVesselEC(vessel.protoVessel);
 
 			_ectotal = getECString();
 
+			_expcount = getExpCountString();
+
 			_isconnected = true;
+		}
+
+		private string getExpCountString()
+		{
+			return string.Format("{0} Experiments", experiments.Count);
 		}
 
 		private string getECString()
@@ -85,7 +101,7 @@ namespace SEPScience.SEP_UI.Windows
 
 		private string getSituationString()
 		{
-			return string.Format("{0} - Surface - {1}", vessel.mainBody.bodyName, ScienceUtil.GetExperimentBiome(vessel.mainBody, vessel.latitude, vessel.longitude));
+			return string.Format("{0} - {1}", vessel.mainBody.bodyName, ScienceUtil.GetExperimentBiome(vessel.mainBody, vessel.latitude, vessel.longitude));
 		}
 
 		private bool getConnectionStatus()
@@ -130,6 +146,11 @@ namespace SEPScience.SEP_UI.Windows
 			get { return _situation; }
 		}
 
+		public string ExpCount
+		{
+			get { return _expcount; }
+		}
+
 		public IList<IExperimentSection> GetExperiments()
 		{
 			return new List<IExperimentSection>(experimentSections.ToArray());
@@ -141,6 +162,11 @@ namespace SEPScience.SEP_UI.Windows
 				return;
 
 			SEP_UI_Utilities.processComponents(obj);
+		}
+
+		public void setParent(SEPScience.Unity.Unity.SEP_VesselSection section)
+		{
+			vesselUISection = section;
 		}
 
 		public void StartAll()
@@ -188,6 +214,65 @@ namespace SEPScience.SEP_UI.Windows
 				else
 					handler.experimentRunning = false;
 			}
+		}
+
+		private void onAddExperiment(Vessel v, SEP_ExperimentHandler h)
+		{
+			if (v == null)
+				return;
+
+			if (v != vessel)
+				return;
+
+			if (h == null)
+				return;
+
+			if (h.vessel != vessel)
+				return;
+
+			SEP_ExperimentSection section = addExperimentSection(h);
+
+			if (section == null)
+				return;
+	
+			experiments.Add(h);
+			experimentSections.Add(section);
+
+			if (vesselUISection == null)
+				return;
+
+			vesselUISection.AddExperimentSection(section);
+
+			_expcount = getExpCountString();
+		}
+
+		private void onRemoveExperiment(Vessel v, SEP_ExperimentHandler h)
+		{
+			if (v == null)
+				return;
+
+			if (v != vessel)
+				return;
+
+			if (h == null)
+				return;
+
+			if (experiments.Any(a => a == h))
+				experiments.Remove(h);
+
+			if (experimentSections.Any(e => e.Handler == h))
+			{
+				SEP_ExperimentSection section = experimentSections.FirstOrDefault(x => x.Handler == h);
+
+				if (section == null)
+					return;
+
+				section.OnDestroy();
+				experimentSections.Remove(section);
+				section = null;
+			}
+
+			_expcount = getExpCountString();
 		}
 
 		private void addExperimentSections()
