@@ -67,7 +67,7 @@ namespace SEPScience.SEP_UI.Windows
 		private void Awake()
 		{
 			if (icon == null)
-				icon = SEP_UI_Loader.Images.LoadAsset<Texture2D>("app_launcher_icon");
+				icon = SEP_UI_Loader.Images.LoadAsset<Texture2D>("toolbar_icon");
 
 			window_Prefab = SEP_UI_Loader.Prefabs.LoadAsset<GameObject>("sep_window");
 
@@ -193,9 +193,12 @@ namespace SEPScience.SEP_UI.Windows
 
 			if (window != null && window_Obj != null)
 			{
-				window_Obj.SetActive(true);
+				//window_Obj.SetActive(true);
 
 				window.gameObject.SetActive(true);
+
+				SEP_Utilities.log("Setting UI Active...", logLevels.warning);
+
 				return;
 			}
 
@@ -206,7 +209,7 @@ namespace SEPScience.SEP_UI.Windows
 
 			SEP_UI_Utilities.processComponents(window_Obj);
 
-			window_Obj.transform.SetParent(UIMasterController.Instance.appCanvas.transform, false);
+			window_Obj.transform.SetParent(ApplicationLauncher.Instance.appSpace, false);
 
 			window = window_Obj.GetComponent<SEP_Window>();
 
@@ -215,7 +218,7 @@ namespace SEPScience.SEP_UI.Windows
 
 			window.setWindow(this);
 
-			window_Obj.SetActive(true);
+			//window_Obj.SetActive(true);
 
 			window.gameObject.SetActive(true);
 
@@ -229,9 +232,11 @@ namespace SEPScience.SEP_UI.Windows
 			if (window_Obj == null)
 				return;
 
-			window_Obj.SetActive(false);
+			//window_Obj.SetActive(false);
 
 			window.gameObject.SetActive(false);
+
+			SEP_Utilities.log("Closing UI...", logLevels.warning);
 						
 			return;
 
