@@ -20,7 +20,7 @@ namespace SEPScience.SEP_UI.Windows
 
 		private SEP_Window window;
 		private GameObject window_Obj;
-		private GameObject window_Prefab;
+		private static GameObject window_Prefab;
 
 		private bool windowSticky;
 		private bool _windowMinimized;
@@ -46,9 +46,15 @@ namespace SEPScience.SEP_UI.Windows
 		{
 			List<IVesselSection> vesselList = new List<IVesselSection>(vessels.ToArray());
 
-			SEP_Utilities.log("Fetch Vessel List : {0}", logLevels.warning, vesselList.Count);
-
 			return vesselList;
+		}
+
+		public void SetAppState(bool on)
+		{
+			if (on)
+				button.SetTrue(true);
+			else
+				button.SetFalse(true);
 		}
 
 		public void ProcessStyle(GameObject obj)
@@ -69,7 +75,8 @@ namespace SEPScience.SEP_UI.Windows
 			if (icon == null)
 				icon = SEP_UI_Loader.Images.LoadAsset<Texture2D>("toolbar_icon");
 
-			window_Prefab = SEP_UI_Loader.Prefabs.LoadAsset<GameObject>("sep_window");
+			if (window_Prefab == null)
+				window_Prefab = SEP_UI_Loader.Prefabs.LoadAsset<GameObject>("sep_window");
 
 			StartCoroutine(getVessels());
 
@@ -81,6 +88,16 @@ namespace SEPScience.SEP_UI.Windows
 		{
 			GameEvents.onGUIApplicationLauncherReady.Remove(onReady);
 			GameEvents.onGUIApplicationLauncherUnreadifying.Remove(onUnreadifying);
+
+			for (int i = vessels.Count - 1; i >= 0; i--)
+			{
+				SEP_VesselSection v = vessels[i];
+
+				if (v == null)
+					continue;
+
+				v.OnDestroy();
+			}
 
 			if (window != null)
 				Destroy(window);
@@ -167,6 +184,9 @@ namespace SEPScience.SEP_UI.Windows
 
 		private void onHoverOut()
 		{
+			if (window != null && windowSticky)
+				window.FadeOut();
+
 			if (!windowSticky)
 				Close();
 		}
@@ -196,6 +216,8 @@ namespace SEPScience.SEP_UI.Windows
 				//window_Obj.SetActive(true);
 
 				window.gameObject.SetActive(true);
+
+				window.FadeIn();
 
 				SEP_Utilities.log("Setting UI Active...", logLevels.warning);
 
@@ -228,6 +250,12 @@ namespace SEPScience.SEP_UI.Windows
 		private void Close()
 		{
 			windowSticky = false;
+
+			if (window == null)
+				return;
+
+			window.close();
+			return;
 
 			if (window_Obj == null)
 				return;
