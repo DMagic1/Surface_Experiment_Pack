@@ -28,9 +28,6 @@ namespace SEPScience.Unity
 			if (canvas == null)
 				return;
 
-			canvas.alpha = 1;
-			return;
-
 			Fade(canvas.alpha, to, duration, call);
 		}
 
