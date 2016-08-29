@@ -46,7 +46,7 @@ namespace SEPScience.Unity.Unity
 
 		private void Start()
 		{
-			Alpha(0);
+			Alpha(1);
 		}
 
 		private void Update()
