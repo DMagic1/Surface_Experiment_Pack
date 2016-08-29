@@ -17,6 +17,7 @@ namespace SEPScience.Unity.Unity
 			ToggleButton,
 			ToggleAlwaysOn,
 			Label,
+			VertScroll,
 			Slider,
 			SliderBackground
 		}
@@ -68,6 +69,31 @@ namespace SEPScience.Unity.Unity
 		public void setText(Styles style)
 		{
 			setText(style, GetComponent<Text>());
+		}
+
+		public void setScrollbar(Sprite background, Sprite thumb)
+		{
+			Image back = GetComponent<Image>();
+
+			if (back == null)
+				return;
+
+			back.sprite = background;
+
+			Scrollbar scroll = GetComponent<Scrollbar>();
+
+			if (scroll == null)
+				return;
+
+			if (scroll.targetGraphic == null)
+				return;
+
+			Image scrollThumb = scroll.targetGraphic.GetComponent<Image>();
+
+			if (scrollThumb == null)
+				return;
+
+			scrollThumb.sprite = thumb;
 		}
 
 		public void setImage(Sprite sprite, Image.Type type)
