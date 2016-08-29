@@ -47,7 +47,6 @@
     <Compile Include="Interfaces\IVesselSection.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="CanvasFader.cs" />
-    <Compile Include="ToggleButton.cs" />
     <Compile Include="Unity\SEP_ExperimentSection.cs" />
     <Compile Include="Unity\SEP_Style.cs" />
     <Compile Include="Unity\SEP_VesselSection.cs" />
