@@ -25,6 +25,17 @@ namespace SEPScience.Unity.Unity
 		private Sprite PauseIcon = null;
 
 		private IExperimentSection experimentInterface;
+		private SEP_VesselSection parent;
+
+		private void OnDestroy()
+		{
+			if (parent == null)
+				return;
+
+			parent.RemoveExperimentSection(this);
+
+			gameObject.SetActive(false);
+		}
 
 		private void Update()
 		{
@@ -48,9 +59,6 @@ namespace SEPScience.Unity.Unity
 
 			if (ToggleBackground != null && PlayIcon != null && PauseIcon != null)
 				ToggleBackground.sprite = experimentInterface.IsRunning ? PauseIcon : PlayIcon;
-
-			//if (Play != null)
-			//	Play.isOn = !experimentInterface.IsRunning;
 		}
 
 		public void toggleVisibility(bool on)
@@ -74,10 +82,15 @@ namespace SEPScience.Unity.Unity
 			}
 		}
 
-		public void setExperiment(IExperimentSection experiment)
+		public void setExperiment(IExperimentSection experiment, SEP_VesselSection vessel)
 		{
 			if (experiment == null)
 				return;
+
+			if (vessel == null)
+				return;
+
+			parent = vessel;
 
 			experimentInterface = experiment;
 
@@ -86,12 +99,6 @@ namespace SEPScience.Unity.Unity
 
 			if (Remaining != null)
 				Remaining.text = experimentInterface.DaysRemaining;
-
-			//if (Play != null)
-			//{
-			//	Play.isOn = !experimentInterface.IsRunning;
-			//	Play.setSpriteStart(PauseIcon, PlayIcon, ColorTintAndSpriteSwapToggle);
-			//}
 
 			if (ToggleBackground != null && PlayIcon != null && PauseIcon != null)
 				ToggleBackground.sprite = experimentInterface.IsRunning ? PauseIcon : PlayIcon;
@@ -102,6 +109,8 @@ namespace SEPScience.Unity.Unity
 
 				FrontSlider.normalizedValue = Mathf.Clamp01(experimentInterface.Progress);
 			}
+
+			experimentInterface.setParent(this);
 		}
 
 		public void toggleExperiment()
@@ -109,14 +118,10 @@ namespace SEPScience.Unity.Unity
 			if (experimentInterface == null)
 				return;
 
-			print("[SEP UI] Toggle Experiment...");
-
 			experimentInterface.ToggleExperiment(!experimentInterface.IsRunning);
 
 			if (ToggleBackground == null || PlayIcon == null || PauseIcon == null)
 				return;
-
-			print("[SEP UI] Toggle Play/Pause Sprite");
 
 			ToggleBackground.sprite = experimentInterface.IsRunning ? PauseIcon : PlayIcon;
 		}
