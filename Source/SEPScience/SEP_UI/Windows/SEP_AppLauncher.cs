@@ -1,13 +1,35 @@
-﻿using System;
+﻿#region license
+/*The MIT License (MIT)
+SEP_AppLauncher - App launcher button for controlling the SEP window
+
+Copyright (c) 2016 DMagic
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
+#endregion
+
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using SEPScience.Unity.Unity;
 using SEPScience.Unity.Interfaces;
-using KSP.UI;
 using KSP.UI.Screens;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace SEPScience.SEP_UI.Windows
 {
@@ -213,13 +235,9 @@ namespace SEPScience.SEP_UI.Windows
 
 			if (window != null && window_Obj != null)
 			{
-				//window_Obj.SetActive(true);
-
 				window.gameObject.SetActive(true);
 
 				window.FadeIn();
-
-				SEP_Utilities.log("Setting UI Active...", logLevels.warning);
 
 				return;
 			}
@@ -240,11 +258,7 @@ namespace SEPScience.SEP_UI.Windows
 
 			window.setWindow(this);
 
-			//window_Obj.SetActive(true);
-
 			window.gameObject.SetActive(true);
-
-			SEP_Utilities.log("Opening UI...", logLevels.warning);
 		}
 
 		private void Close()
@@ -255,22 +269,6 @@ namespace SEPScience.SEP_UI.Windows
 				return;
 
 			window.close();
-			return;
-
-			if (window_Obj == null)
-				return;
-
-			//window_Obj.SetActive(false);
-
-			window.gameObject.SetActive(false);
-
-			SEP_Utilities.log("Closing UI...", logLevels.warning);
-						
-			return;
-
-			SEP_Utilities.log("Closing UI...", logLevels.warning);
-
-			Destroy(window_Obj);
 		}
 
 
