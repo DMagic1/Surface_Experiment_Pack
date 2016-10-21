@@ -32,6 +32,7 @@ using System.Reflection;
 using FinePrint.Utilities;
 using UnityEngine;
 using KSP.UI.Screens.Flight.Dialogs;
+using Experience.Effects;
 
 namespace SEPScience
 {
@@ -137,10 +138,10 @@ namespace SEPScience
 		private string failMessage = "";
 		private ExperimentsResultDialog results;
 		private ModuleSEPStation controller;
-		public List<ModuleResource> resources = new List<ModuleResource>();
 		private UIPartActionWindow window;
 		private bool powerIsProblem;
 		private int powerTimer;
+		public bool hasContainer;
 
 		public SEP_ExperimentHandler Handler
 		{
@@ -155,9 +156,18 @@ namespace SEPScience
 		private List<string> requiredPartList = new List<string>();
 		private List<string> requiredModuleList = new List<string>();
 
+		public override void OnAwake()
+		{
+			GameEvents.onGamePause.Add(onPause);
+			GameEvents.onGameUnpause.Add(onUnPause);
+			GameEvents.onVesselStandardModification.Add(onVesselModified);
+		}
+
 		public override void OnStart(PartModule.StartState state)
 		{
 			base.OnStart(state);
+
+			usingEC = resHandler.inputResources.Count > 0;
 
 			flightID = (int)part.flightID;
 
@@ -219,6 +229,9 @@ namespace SEPScience
 
 		private void OnDestroy()
 		{
+			GameEvents.onGamePause.Remove(onPause);
+			GameEvents.onGameUnpause.Remove(onUnPause);
+			GameEvents.onVesselStandardModification.Remove(onVesselModified);
 			GameEvents.onVesselSituationChange.Remove(sitChange);
 			SEP_Utilities.onWindowSpawn.Remove(onWindowSpawn);
 			SEP_Utilities.onWindowDestroy.Remove(onWindowDestroy);
@@ -243,7 +256,8 @@ namespace SEPScience
 				if (handler == null)
 					return;
 
-				status = statusString();
+				if (!powerIsProblem)
+					status = statusString();
 
 				if (experimentRunning)
 				{
@@ -281,28 +295,17 @@ namespace SEPScience
 			if (!handler.experimentRunning)
 				return;
 
-			int l = resources.Count;
-
-			for (int i = 0; i < l; i++)
+			if (!resHandler.UpdateModuleResourceInputs(ref status, 1, 0.9, false, true))
 			{
-				ModuleResource resource = resources[i];
-				resource.currentRequest = resource.rate * TimeWarp.fixedDeltaTime;
-				resource.currentAmount = part.RequestResource(resource.id, resource.currentRequest);
-
-				if (resource.currentAmount < resource.currentRequest * 0.8999)
-				{
-					//SEPUtilities.log("Not enough power for SEP Experiment [{0}]", logLevels.error, experimentID);
-					PauseExperiment();
-					Events["DeployExperiment"].active = false;
-					Events["PauseExperiment"].active = true;
-					experimentRunning = true;
-					powerIsProblem = true;
-					powerTimer = 0;
-					break;
-				}
-				else
-					powerIsProblem = false;
+				PauseExperiment();
+				Events["DeployExperiment"].active = false;
+				Events["PauseExperiment"].active = true;
+				experimentRunning = true;
+				powerIsProblem = true;
+				powerTimer = 0;
 			}
+			else
+				powerIsProblem = false;
 		}
 
 		public override string GetInfo()
@@ -322,11 +325,10 @@ namespace SEPScience
 
 			s += string.Format("Std. Time To Completion: {0:N0} Days\n", getDays(experimentTime));
 
-			if (resources.Count > 0)
-				s += string.Format("{0}\n", PartModuleUtil.PrintResourceRequirements("Requires:", resources.ToArray()));
-
 			if (animated && oneShotAnim)
-				s += string.Format("One Shot: {0}\n", RUIutils.GetYesNoUIString(true));
+				s += string.Format("One Shot: {0}", RUIutils.GetYesNoUIString(true));
+
+			s += resHandler.PrintModuleResources(1);
 
 			return s;
 		}
@@ -342,26 +344,6 @@ namespace SEPScience
 
 		public override void OnLoad(ConfigNode node)
 		{
-			if (node.HasNode("RESOURCE"))
-			{
-				resources = new List<ModuleResource>();
-
-				ConfigNode[] resourceNodes = node.GetNodes("RESOURCE");
-
-				int r = resourceNodes.Length;
-
-				for (int j = 0; j < r; j++)
-				{
-					ConfigNode resource = resourceNodes[j];
-					ModuleResource mod = new ModuleResource();
-					mod.Load(resource);
-					resources.Add(mod);
-				}
-			}
-
-			if (resources.Count > 0)
-				usingEC = true;
-
 			StartCoroutine(delayedLoad(node));
 		}
 
@@ -402,10 +384,13 @@ namespace SEPScience
 
 		private void delayedEvents()
 		{
-			Events["CollectData"].active = handler.GetScienceCount() > 0;
-			Events["ReviewDataEvent"].active = handler.GetScienceCount() > 0;
+			int i = handler.GetScienceCount();
+
+			Events["CollectData"].active = i > 0;
+			Events["ReviewDataEvent"].active = i > 0;
 			Events["DeployExperiment"].active = IsDeployed && !experimentRunning && handler.completion < handler.getMaxCompletion();
 			Events["PauseExperiment"].active = IsDeployed && experimentRunning;
+			Events["TransferDataEvent"].active = hasContainer && i > 0;
 		}
 
 		public override void OnSave(ConfigNode node)
@@ -414,6 +399,46 @@ namespace SEPScience
 				return;
 
 			handler.OnSave(node);
+		}
+
+		private void onPause()
+		{
+			if (results != null)
+				results.gameObject.SetActive(false);
+		}
+
+		private void onUnPause()
+		{
+			if (results != null)
+				results.gameObject.SetActive(true);
+		}
+
+		private void onVesselModified(Vessel v)
+		{
+			if (v == vessel && HighLogic.LoadedSceneIsFlight)
+				findContainers();
+		}
+
+		private void findContainers()
+		{
+			for (int i = vessel.Parts.Count - 1; i >= 0; i--)
+			{
+				Part p = vessel.Parts[i];
+
+				if (p == null)
+					continue;
+
+				if (p.State == PartStates.DEAD)
+					continue;
+
+				ModuleScienceContainer container = p.FindModuleImplementing<ModuleScienceContainer>();
+
+				if (container == null)
+					continue;
+
+				hasContainer = container.canBeTransferredToInVessel;
+				break;
+			}
 		}
 
 		private string statusString()
@@ -446,7 +471,23 @@ namespace SEPScience
 			if (calibration <= 0)
 				return "∞";
 
-			float time = experimentTime / calibration;
+			float calib = calibration;
+
+			if (SEP_Controller.Instance.UsingCommNet)
+			{
+				float signal = (float)vessel.Connection.SignalStrength - 0.5f;
+
+				if (signal < 0)
+					signal /= 2;
+
+				float adjust = Mathf.Abs(calib - 1) / 0.25f;
+
+				float bonus = calib * signal * (1 / adjust);
+
+				calib += bonus;
+			}
+
+			float time = experimentTime / calib;
 
 			time *= 21600;
 
@@ -616,18 +657,18 @@ namespace SEPScience
 				return;
 			}
 
-			ProtoCrewMember crew = FlightGlobals.ActiveVessel.GetVesselCrew().FirstOrDefault();
-
-			if (crew == null)
-				return;
-
-			if (!canConduct(crew))
+			if (!canConduct())
 			{
 				ScreenMessages.PostScreenMessage(failMessage, 5f, ScreenMessageStyle.UPPER_CENTER);
 				return;
 			}
 
-			calibration = calculateCalibration(crew.experienceTrait.CrewMemberExperienceLevel(), complexity);			
+			ProtoCrewMember crew = FlightGlobals.ActiveVessel.GetVesselCrew().FirstOrDefault();
+
+			if (crew == null)
+				return;
+
+			calibration = calculateCalibration(crew, complexity);			
 
 			IsDeployed = true;
 
@@ -674,18 +715,19 @@ namespace SEPScience
 				return;
 			}
 
-			ProtoCrewMember crew = FlightGlobals.ActiveVessel.GetVesselCrew().FirstOrDefault();
-
-			if (crew == null)
-				return;
-
-			if (!canConduct(crew))
+			if (!canConduct())
 			{
 				ScreenMessages.PostScreenMessage(failMessage, 5f, ScreenMessageStyle.UPPER_CENTER);
 				return;
 			}
 
-			calibration = calculateCalibration(crew.experienceTrait.CrewMemberExperienceLevel(), complexity);
+
+			ProtoCrewMember crew = FlightGlobals.ActiveVessel.GetVesselCrew().FirstOrDefault();
+
+			if (crew == null)
+				return;
+
+			calibration = calculateCalibration(crew, complexity);
 
 			if (handler != null)
 				handler.calibration = calibration;
@@ -748,11 +790,26 @@ namespace SEPScience
 			}
 		}
 
-		private float calculateCalibration(int l, int c)
+		private float calculateCalibration(ProtoCrewMember c, int l)
 		{
+			int level = c.experienceTrait.CrewMemberExperienceLevel();
+
+			int m = 0;
+
+			if (c.HasEffect<ExternalExperimentSkill>())
+				m = 1;
+			else if (c.HasEffect<AutopilotSkill>())
+				m = 0;
+			else if (c.HasEffect<RepairSkill>())
+				m = -1;
+			else
+				m = -5;
+
+			level += m;
+
 			float f = 1;
 
-			int i = l - c;
+			int i = level - l;
 
 			float mod = i * 0.25f;
 
@@ -782,6 +839,7 @@ namespace SEPScience
 
 			Events["CollectData"].active = false;
 			Events["ReviewDataEvent"].active = false;
+			Events["TransferDataEvent"].active = false;
 		}
 
 		[KSPEvent(guiActive = false, guiActiveUnfocused = true, externalToEVAOnly = true, active = false)]
@@ -835,6 +893,65 @@ namespace SEPScience
 			Fields["daysRemaining"].guiActive = false;
 			Events["DeployExperiment"].active = true;
 			Events["PauseExperiment"].active = false;
+		}
+
+		[KSPEvent(guiActive = true, guiName = "Transfer Data", active = false)]
+		public void TransferDataEvent()
+		{
+			if (!hasContainer)
+			{
+				ScreenMessages.PostScreenMessage(string.Format("<color=orange>[{0}]: No data container on-board, canceling transfer.<color>", part.partInfo.title), 6, ScreenMessageStyle.UPPER_CENTER);
+				return;
+			}
+
+			if (PartItemTransfer.Instance != null)
+			{
+				ScreenMessages.PostScreenMessage("<b><color=orange>A transfer is already in progress.</color></b>", 3f, ScreenMessageStyle.UPPER_CENTER);
+				return;
+			}
+
+			ExperimentTransfer.Create(part, this, new Callback<PartItemTransfer.DismissAction, Part>(transferData));
+		}
+
+		private void transferData(PartItemTransfer.DismissAction dismiss, Part p)
+		{
+			if (dismiss != PartItemTransfer.DismissAction.ItemMoved)
+				return;
+
+			if (p == null)
+				return;
+
+			if (handler == null)
+				return;
+
+			if (handler.GetScienceCount() <= 0)
+			{
+				ScreenMessages.PostScreenMessage(string.Format("[{0}]: has no data to transfer.", part.partInfo.title), 6, ScreenMessageStyle.UPPER_CENTER);
+				return;
+			}
+
+			ModuleScienceContainer container = p.FindModuleImplementing<ModuleScienceContainer>();
+
+			if (container == null)
+			{
+				ScreenMessages.PostScreenMessage(string.Format("<color=orange>[{0}]: {1} has no data container, canceling transfer.<color>", part.partInfo.title, p.partInfo.title), 6, ScreenMessageStyle.UPPER_CENTER);
+				return;
+			}
+
+			onTransferData(container);
+		}
+
+		private void onTransferData(ModuleScienceContainer target)
+		{
+			if (target == null)
+				return;
+
+			int i = handler.GetScienceCount();
+
+			if (target.StoreData(new List<IScienceDataContainer> { this }, false))
+				ScreenMessages.PostScreenMessage(string.Format("[{0}]: {1} Data stored.", target.part.partInfo.title, i), 6, ScreenMessageStyle.UPPER_LEFT);
+			else
+				ScreenMessages.PostScreenMessage(string.Format("<color=orange>[{0}]: Not all data was stored.</color>", target.part.partInfo.title), 6, ScreenMessageStyle.UPPER_LEFT);
 		}
 
 		private void sitChange(GameEvents.HostedFromToAction<Vessel, Vessel.Situations> FT)
@@ -921,7 +1038,7 @@ namespace SEPScience
 				controller.setCollectEvent();
 		}
 
-		private bool canConduct(ProtoCrewMember c)
+		private bool canConduct()
 		{
 			failMessage = "";
 
@@ -999,12 +1116,6 @@ namespace SEPScience
 				}
 			}
 
-			if (c.experienceTrait.TypeName != "Scientist")
-			{
-				failMessage = "Kerbal must be scientist";
-				return false;
-			}
-
 			return true;
 		}
 
@@ -1012,26 +1123,34 @@ namespace SEPScience
 
 		private void onKeepData(ScienceData data)
 		{
+			results = null;
+
 			transferToEVA();
 		}
 
 		private void onTransmitData(ScienceData data)
 		{
+			results = null;
+
 			if (handler == null)
 				return;
 
-			List<IScienceDataTransmitter> tranList = vessel.FindPartModulesImplementing<IScienceDataTransmitter>();
-			if (tranList.Count > 0 && handler.GetScienceCount() > 0)
+			IScienceDataTransmitter bestTransmitter = ScienceUtil.GetBestTransmitter(vessel);
+			if (bestTransmitter != null)
 			{
-				tranList.OrderBy(ScienceUtil.GetTransmitterScore).First().TransmitData(new List<ScienceData> { data });
+				bestTransmitter.TransmitData(new List<ScienceData> { data });
 				DumpData(data);
 			}
+			else if (CommNet.CommNetScenario.CommNetEnabled)
+				ScreenMessages.PostScreenMessage("No usable, in-range Comms Devices on this vessel. Cannot Transmit Data.", 3f, ScreenMessageStyle.UPPER_CENTER);
 			else
 				ScreenMessages.PostScreenMessage("No Comms Devices on this vessel. Cannot Transmit Data.", 3f, ScreenMessageStyle.UPPER_CENTER);
 		}
 
 		private void onSendToLab(ScienceData data)
 		{
+			results = null;
+
 			ScienceLabSearch labSearch = new ScienceLabSearch(vessel, data);
 
 			if (labSearch.NextLabForDataFound)
@@ -1045,6 +1164,8 @@ namespace SEPScience
 
 		private void onDiscardData(ScienceData data)
 		{
+			results = null;
+
 			if (handler == null)
 				return;
 
@@ -1066,7 +1187,7 @@ namespace SEPScience
 
 			ScienceData data = handler.GetData()[0];
 
-			results =  ExperimentsResultDialog.DisplayResult(new ExperimentResultDialogPage(part, data, data.transmitValue, ModuleScienceLab.GetBoostForVesselData(vessel, data), false, transmitWarningText, true, new ScienceLabSearch(vessel, data), new Callback<ScienceData>(onDiscardData), new Callback<ScienceData>(onKeepData), new Callback<ScienceData>(onTransmitData), new Callback<ScienceData>(onSendToLab)));
+			results =  ExperimentsResultDialog.DisplayResult(new ExperimentResultDialogPage(part, data, data.baseTransmitValue, data.transmitBonus, false, transmitWarningText, true, new ScienceLabSearch(vessel, data), new Callback<ScienceData>(onDiscardData), new Callback<ScienceData>(onKeepData), new Callback<ScienceData>(onTransmitData), new Callback<ScienceData>(onSendToLab)));
 		}
 
 		public void ReviewDataItem(ScienceData data)
@@ -1086,6 +1207,7 @@ namespace SEPScience
 
 			Events["CollectData"].active = true;
 			Events["ReviewDataEvent"].active = true;
+			Events["TransferDataEvent"].active = hasContainer;
 
 			if (controller != null)
 				controller.setCollectEvent();
@@ -1122,6 +1244,7 @@ namespace SEPScience
 
 			Events["CollectData"].active = false;
 			Events["ReviewDataEvent"].active = false;
+			Events["TransferDataEvent"].active = false;
 
 			if (controller != null)
 				controller.setCollectEvent();
