@@ -33,7 +33,7 @@ using UnityEngine;
 
 namespace SEPScience
 {
-	public class ModuleSEPStation : PartModule, IScalarModule
+	public class ModuleSEPStation : PartModule, IScalarModule, IContractObjectiveModule
 	{
 		[KSPField]
 		public int maxExperiments = 8;
@@ -645,6 +645,20 @@ namespace SEPScience
 			Events["toggleAutoTransmit"].guiName = autoTransmit ? "Turn Auto Transmit Off" : "Turn Auto Transmit On";
 		}
 
+		#region IContractObjectiveModule
+
+		public bool CheckContractObjectiveValidity()
+		{
+			return true;
+		}
+
+		public string GetContractObjectiveType()
+		{
+			return "Antenna";
+		}
+
+		#endregion
+
 		#region IScalar
 
 		public bool CanMove
@@ -684,6 +698,11 @@ namespace SEPScience
 				DeployEvent();
 
 			scalar = t;
+		}
+
+		public string ScalarModuleID
+		{
+			get { return "sepcontroller"; }
 		}
 
 		public void SetUIRead(bool state)
