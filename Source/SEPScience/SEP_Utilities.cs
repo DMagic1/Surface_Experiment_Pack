@@ -42,8 +42,15 @@ namespace SEPScience
 		public static EventData<Vessel, SEP_ExperimentHandler> onExperimentActivate = new EventData<Vessel, SEP_ExperimentHandler>("onExperimentActivate");
 		public static EventData<Vessel, SEP_ExperimentHandler> onExperimentDeactivate = new EventData<Vessel, SEP_ExperimentHandler>("onExperimentDeactivate");
 
+		public static List<PartModule> AntennaModules = new List<PartModule>();
+		public static DictionaryValueList<string, AvailablePart> AntennaParts = new DictionaryValueList<string, AvailablePart>();
+		public static bool antennaModulesLoaded = false;
+
 		private static FieldInfo actionListField;
 		public static bool UIWindowReflectionLoaded = false;
+
+		public static Sprite[] CommNetSprites;
+		public static bool spritesLoaded = false;
 
 		public static void log(string message, logLevels l, params object[] objs)
 		{
@@ -78,6 +85,38 @@ namespace SEPScience
 			}
 		}
 
+		public static void loadAntennaParts()
+		{
+			antennaModulesLoaded = true;
+
+			for (int i = PartLoader.LoadedPartsList.Count - 1; i >= 0; i--)
+			{
+				AvailablePart part = PartLoader.LoadedPartsList[i];
+
+				if (part == null)
+					continue;
+
+				if (part.partPrefab == null)
+					continue;
+
+				for (int j = part.partPrefab.Modules.Count - 1; j >= 0; j--)
+				{
+					PartModule mod = part.partPrefab.Modules[j];
+
+					if (mod == null)
+						continue;
+
+					if (!mod.IsValidContractObjective("Antenna"))
+						continue;
+
+					AntennaModules.Add(mod);
+
+					if (!AntennaParts.Contains(part.name))
+						AntennaParts.Add(part.name, part);
+				}
+			}
+		}
+
 		public static void attachWindowPrefab()
 		{
 			var prefab = UIPartActionController.Instance.windowPrefab;
@@ -89,6 +128,13 @@ namespace SEPScience
 			}
 
 			prefab.gameObject.AddOrGetComponent<SEP_UIWindow>();
+		}
+
+		public static void loadSprites(Sprite ss1, Sprite ss2, Sprite ss3, Sprite ss4, Sprite ss5)
+		{
+			CommNetSprites = new Sprite[5] { ss1, ss2, ss3, ss4, ss5 };
+
+			spritesLoaded = true;
 		}
 
 		public static void assignReflectionMethod()
@@ -160,13 +206,10 @@ namespace SEPScience
 
 			int l = s.Length;
 
-			if (l <= 0)
-				return list;
-
 			for (int i = 0; i < l; i++)
 			{
 				string m = s[i];
-
+				
 				for (int j = 0; j < SEP_Utilities.loadedPartModules.Count; j++)
 				{
 					Type t = SEP_Utilities.loadedPartModules[j];
@@ -246,7 +289,7 @@ namespace SEPScience
 			sub.science = handler.submittedData * sub.subjectValue;
 			sub.scientificValue = 1 - (sub.science / sub.scienceCap);
 
-			data = new ScienceData(exp.baseValue * exp.dataScale, handler.xmitDataScalar, handler.vessel.VesselValues.ScienceReturn.value, sub.id, sub.title, false, (uint)handler.flightID);
+			data = new ScienceData(exp.baseValue * exp.dataScale, handler.xmitDataScalar, 0, sub.id, sub.title, false, (uint)handler.flightID);
 
 			//log("Science Data Generated: {0}", logLevels.warning, data.subjectID);
 
@@ -563,9 +606,9 @@ namespace SEPScience
 					if (resource.resourceName != "ElectricCharge")
 						continue;
 
-					double amount = 0;
+					double amount = resource.amount;
 
-					resource.resourceValues.TryGetValue("amount", ref amount);
+					//resource.resourceValues.TryGetValue("amount", ref amount);
 
 					ec += amount;
 				}
@@ -601,9 +644,9 @@ namespace SEPScience
 					if (resource.resourceName != "ElectricCharge")
 						continue;
 
-					double amount = 0;
+					double amount = resource.maxAmount;
 
-					resource.resourceValues.TryGetValue("maxAmount", ref amount);
+					//resource.resourceValues.TryGetValue("maxAmount", ref amount);
 
 					ec += amount;
 				}
