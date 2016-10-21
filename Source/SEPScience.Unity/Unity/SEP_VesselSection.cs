@@ -46,20 +46,18 @@ namespace SEPScience.Unity.Unity
 		private Button PauseAll = null;
 		[SerializeField]
 		private Button StartAll = null;
-		//[SerializeField]
-		//private Image Connection = null;
 		[SerializeField]
-		private Text TotalEC = null;
+		private Image Connection = null;
 		[SerializeField]
-		private Text ExpCount = null;
+		private TextHandler TotalEC = null;
 		[SerializeField]
-		private Text VesselTitle = null;
+		private TextHandler ExpCount = null;
 		[SerializeField]
-		private Text SituationText = null;
-		//[SerializeField]
-		//private Sprite ConnectedSprite = null;
-		//[SerializeField]
-		//private Sprite DisconnectedSprite = null;
+		private TextHandler VesselTitle = null;
+		[SerializeField]
+		private TextHandler SituationText = null;
+		[SerializeField]
+		private TextHighlighter TitleHighlighter = null;
 		[SerializeField]
 		private GameObject ExperimentSectionPrefab = null;
 		[SerializeField]
@@ -70,7 +68,6 @@ namespace SEPScience.Unity.Unity
 		private Color green = new Color(0.345098f, 1, .082353f, 1);
 		private Color grey = new Color(0.329412f, 0.329412f, 0.329412f, 1);
 		private IVesselSection vesselInterface;
-		private SEP_Window window;
 		private List<SEP_ExperimentSection> experiments = new List<SEP_ExperimentSection>();
 
 		private void OnDestroy()
@@ -89,16 +86,16 @@ namespace SEPScience.Unity.Unity
 			vesselInterface.Update();
 
 			if (TotalEC != null)
-				TotalEC.text = vesselInterface.ECTotal;
+				TotalEC.OnTextUpdate.Invoke(vesselInterface.ECTotal);
 
 			if (ExpCount != null)
-				ExpCount.text = vesselInterface.ExpCount;
+				ExpCount.OnTextUpdate.Invoke(vesselInterface.ExpCount);
 
-			//if (Connection != null)
-			//	Connection.sprite = vesselInterface.IsConnected ? ConnectedSprite : DisconnectedSprite;
+			if (Connection != null)
+				Connection.sprite = vesselInterface.SignalSprite;
 
 			if (SituationText != null)
-				SituationText.text = vesselInterface.Situation;
+				SituationText.OnTextUpdate.Invoke(vesselInterface.Situation);
 
 			if (StartAll != null && PauseAll != null)
 			{
@@ -114,20 +111,18 @@ namespace SEPScience.Unity.Unity
 			}
 		}
 
-		public void setVessel(IVesselSection vessel, SEP_Window win)
+		public void setVessel(IVesselSection vessel)
 		{
 			if (vessel == null)
 				return;
 
-			window = win;
-
 			vesselInterface = vessel;
 
 			if (VesselTitle != null)
-				VesselTitle.text = vessel.Name;
+				VesselTitle.OnTextUpdate.Invoke(vessel.Name);
 
 			if (SituationText != null)
-				SituationText.text = vessel.Situation;
+				SituationText.OnTextUpdate.Invoke(vessel.Situation);
 
 			if (TransmissionBackground != null)
 			{
@@ -136,6 +131,9 @@ namespace SEPScience.Unity.Unity
 				else
 					TransmissionBackground.color = grey;
 			}
+
+			if (SEP_Window.Window != null && SEP_Window.Window.ScrollRect != null && TitleHighlighter != null)
+				TitleHighlighter.setScroller(SEP_Window.Window.ScrollRect);
 
 			vesselInterface.IsVisible = true;
 
@@ -155,44 +153,6 @@ namespace SEPScience.Unity.Unity
 			}
 
 			vesselInterface.setParent(this);
-		}
-
-		public void onPointerEnterTitle(BaseEventData eventData)
-		{
-			if (VesselTitle == null)
-				return;
-
-			if (!(eventData is PointerEventData))
-				return;
-
-			VesselTitle.color = vesselGreen;
-
-			eventData.Reset();
-		}
-
-		public void onPointerExitTitle(BaseEventData eventData)
-		{
-			if (VesselTitle == null)
-				return;
-
-			if (!(eventData is PointerEventData))
-				return;
-
-			VesselTitle.color = white;
-		}
-
-		public void onScroll(BaseEventData eventData)
-		{
-			if (!(eventData is PointerEventData))
-				return;
-
-			if (window == null)
-				return;
-
-			if (window.ScrollRect == null)
-				return;
-
-			window.ScrollRect.OnScroll((PointerEventData)eventData);
 		}
 
 		public void setTransmission()
@@ -311,8 +271,6 @@ namespace SEPScience.Unity.Unity
 
 			if (sectionObject == null)
 				return;
-
-			vesselInterface.ProcessStyle(sectionObject);
 
 			sectionObject.transform.SetParent(ExperimentSectionTransform, false);
 

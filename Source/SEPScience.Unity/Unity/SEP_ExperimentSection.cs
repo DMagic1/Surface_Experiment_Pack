@@ -33,19 +33,17 @@ namespace SEPScience.Unity.Unity
 	public class SEP_ExperimentSection : MonoBehaviour
 	{
 		[SerializeField]
-		private Text Title = null;
+		private TextHandler Title = null;
 		[SerializeField]
 		private Slider BaseSlider = null;
 		[SerializeField]
 		private Slider FrontSlider = null;
 		[SerializeField]
-		private Text Remaining = null;
+		private TextHandler Remaining = null;
 		[SerializeField]
-		private Image ToggleBackground = null;
+		private Selectable ExperimentSelectable = null;
 		[SerializeField]
-		private Sprite PlayIcon = null;
-		[SerializeField]
-		private Sprite PauseIcon = null;
+		private Sprite[] ToggleIcons = null;
 
 		private IExperimentSection experimentInterface;
 		private SEP_VesselSection parent;
@@ -71,7 +69,7 @@ namespace SEPScience.Unity.Unity
 			experimentInterface.Update();
 
 			if (Remaining != null)
-				Remaining.text = experimentInterface.DaysRemaining;
+				Remaining.OnTextUpdate.Invoke(experimentInterface.DaysRemaining);
 
 			if (BaseSlider != null && FrontSlider != null)
 			{
@@ -80,8 +78,7 @@ namespace SEPScience.Unity.Unity
 				FrontSlider.normalizedValue = Mathf.Clamp01(experimentInterface.Progress);
 			}
 
-			if (ToggleBackground != null && PlayIcon != null && PauseIcon != null)
-				ToggleBackground.sprite = experimentInterface.IsRunning ? PauseIcon : PlayIcon;
+			UpdateToggleButton(experimentInterface.IsRunning);
 		}
 
 		public void toggleVisibility(bool on)
@@ -118,13 +115,12 @@ namespace SEPScience.Unity.Unity
 			experimentInterface = experiment;
 
 			if (Title != null)
-				Title.text = experiment.Name;
+				Title.OnTextUpdate.Invoke(experiment.Name);
 
 			if (Remaining != null)
-				Remaining.text = experimentInterface.DaysRemaining;
+				Remaining.OnTextUpdate.Invoke(experimentInterface.DaysRemaining);
 
-			if (ToggleBackground != null && PlayIcon != null && PauseIcon != null)
-				ToggleBackground.sprite = experimentInterface.IsRunning ? PauseIcon : PlayIcon;
+			UpdateToggleButton(experimentInterface.IsRunning);
 
 			if (BaseSlider != null && FrontSlider != null)
 			{
@@ -143,10 +139,26 @@ namespace SEPScience.Unity.Unity
 
 			experimentInterface.ToggleExperiment(!experimentInterface.IsRunning);
 
-			if (ToggleBackground == null || PlayIcon == null || PauseIcon == null)
+			UpdateToggleButton(experimentInterface.IsRunning);
+		}
+
+		private void UpdateToggleButton(bool isOn)
+		{
+			if (ExperimentSelectable == null)
 				return;
 
-			ToggleBackground.sprite = experimentInterface.IsRunning ? PauseIcon : PlayIcon;
+			if (ToggleIcons.Length < 6)
+				return;
+
+			ExperimentSelectable.image.sprite = isOn ? ToggleIcons[3] : ToggleIcons[0];
+			ExperimentSelectable.image.type = Image.Type.Simple;
+			ExperimentSelectable.transition = Selectable.Transition.SpriteSwap;
+
+			SpriteState state = ExperimentSelectable.spriteState;
+			state.highlightedSprite = isOn ? ToggleIcons[4] : ToggleIcons[1];
+			state.pressedSprite = isOn ? ToggleIcons[5] : ToggleIcons[2];
+			state.disabledSprite = null;
+			ExperimentSelectable.spriteState = state;
 		}
 
 	}
