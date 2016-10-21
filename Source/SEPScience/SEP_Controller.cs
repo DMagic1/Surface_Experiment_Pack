@@ -28,6 +28,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using KSP.UI.Screens.Flight;
 using UnityEngine;
 
 namespace SEPScience
@@ -43,6 +44,7 @@ namespace SEPScience
 		private double updateRate = 3950;
 		private bool setup;
 		private bool transmissionUpgrade;
+		private bool usingCommNet = true;
 		private Dictionary<Guid, List<SEP_ExperimentHandler>> experiments = new Dictionary<Guid,List<SEP_ExperimentHandler>>();
 		private List<Vessel> experimentVessels = new List<Vessel>();
 
@@ -61,6 +63,11 @@ namespace SEPScience
 			get { return transmissionUpgrade; }
 		}
 
+		public bool UsingCommNet
+		{
+			get { return usingCommNet; }
+		}
+
 		public List<Vessel> Vessels
 		{
 			get { return experimentVessels; }
@@ -75,6 +82,9 @@ namespace SEPScience
 				if (!SEP_Utilities.partModulesLoaded)
 					SEP_Utilities.loadPartModules();
 
+				if (!SEP_Utilities.antennaModulesLoaded)
+					SEP_Utilities.loadAntennaParts();
+
 				if (!SEP_Utilities.UIWindowReflectionLoaded)
 					SEP_Utilities.assignReflectionMethod();
 			}			
@@ -84,6 +94,9 @@ namespace SEPScience
 				running = false;
 				Destroy(gameObject);
 			}
+
+			if (!SEP_Utilities.spritesLoaded)
+				StartCoroutine(loadSprites());
 
 			if (ResearchAndDevelopment.GetTechnologyState(transmissionNode) == RDTech.State.Available)
 				transmissionUpgrade = true;
@@ -100,7 +113,10 @@ namespace SEPScience
 
 			running = true;
 
+			usingCommNet = HighLogic.CurrentGame.Parameters.Difficulty.EnableCommNet;
+
 			GameEvents.onLevelWasLoaded.Add(onReady);
+			GameEvents.OnGameSettingsApplied.Add(onSettingsApplied);
 		}
 
 		private void OnDestroy()
@@ -108,6 +124,7 @@ namespace SEPScience
 			running = false;
 
 			GameEvents.onLevelWasLoaded.Remove(onReady);
+			GameEvents.OnGameSettingsApplied.Remove(onSettingsApplied);
 
 			var handlers = experiments.SelectMany(e => e.Value).ToList();
 
@@ -149,10 +166,23 @@ namespace SEPScience
 			}
 		}
 
+		private void onSettingsApplied()
+		{
+			usingCommNet = HighLogic.CurrentGame.Parameters.Difficulty.EnableCommNet;
+		}
+
 		private void onReady(GameScenes scene)
 		{
 			if (scene == GameScenes.FLIGHT || scene == GameScenes.TRACKSTATION || scene == GameScenes.SPACECENTER)
 				StartCoroutine(startup());
+		}
+
+		private IEnumerator loadSprites()
+		{
+			while (TelemetryUpdate.Instance == null)
+				yield return null;
+
+			SEP_Utilities.loadSprites(TelemetryUpdate.Instance.SS0, TelemetryUpdate.Instance.SS1, TelemetryUpdate.Instance.SS2, TelemetryUpdate.Instance.SS3, TelemetryUpdate.Instance.SS4);
 		}
 
 		private IEnumerator attachWindowListener()
@@ -344,9 +374,7 @@ namespace SEPScience
 
 					if (m.usingECResource && !m.vessel.loaded)
 					{
-						List<string> generators = FinePrint.ContractDefs.GetModules("Power");
-
-						if (!FinePrint.Utilities.VesselUtilities.VesselHasAnyModules(generators, m.vessel))
+						if (!m.vessel.HasValidContractObjectives(new List<string> { "Power" }))
 							continue;
 					}
 
@@ -363,7 +391,23 @@ namespace SEPScience
 
 					double t = m.experimentTime;
 
-					t /= m.calibration;
+					float calib = m.calibration;
+
+					if (usingCommNet)
+					{
+						float signal = (float)m.vessel.Connection.SignalStrength - 0.5f;
+
+						if (signal < 0)
+							signal /= 2;
+
+						float adjust = Mathf.Abs(calib - 1) / 0.25f;
+
+						float bonus = calib * signal * (1 / adjust);
+
+						calib += bonus;
+					}
+
+					t /= calib;
 
 					double length = time - m.lastBackgroundCheck;
 
@@ -440,6 +484,7 @@ namespace SEPScience
 								if (m.vessel.loaded && m.host != null)
 								{
 									m.host.Events["ReviewDataEvent"].active = true;
+									m.host.Events["TransferDataEvent"].active = m.host.hasContainer;
 									m.host.Events["CollectData"].active = true;
 									if (m.host.Controller != null)
 										m.host.Controller.setCollectEvent();
@@ -458,6 +503,7 @@ namespace SEPScience
 						{
 							int count = m.GetScienceCount();
 							m.host.Events["ReviewDataEvent"].active = !transmitted && count > 0;
+							m.host.Events["TransferDataEvent"].active = !transmitted && count > 0 && m.host.hasContainer;
 							m.host.Events["CollectData"].active = !transmitted && count > 0;
 							m.host.PauseExperiment();
 							if (m.host.Controller != null)
@@ -497,6 +543,7 @@ namespace SEPScience
 					if (exp.vessel.loaded && exp.host != null)
 					{
 						exp.host.Events["ReviewDataEvent"].active = true;
+						exp.host.Events["TransferDataEvent"].active = exp.host.hasContainer;
 						exp.host.Events["CollectData"].active = true;
 						if (exp.host.Controller != null)
 							exp.host.Controller.setCollectEvent();
@@ -537,11 +584,9 @@ namespace SEPScience
 
 				ResearchAndDevelopment.Instance.SubmitScienceData(newData * sub.dataScale, sub, 1, exp.vessel.protoVessel);
 
-				List<string> generators = FinePrint.ContractDefs.GetModules("Power");
-				
-				if (!FinePrint.Utilities.VesselUtilities.VesselHasAnyModules(generators, exp.vessel))
+				if (exp.vessel.HasValidContractObjectives(new List<string> { "Power" }))
 					consumeResources(exp.vessel.protoVessel, ecCost);
-
+				
 				exp.submittedData += (newData - submittedData);
 
 				return true;
@@ -551,50 +596,26 @@ namespace SEPScience
 		private List<ProtoPartSnapshot> getProtoTransmitters(ProtoVessel v)
 		{
 			List<ProtoPartSnapshot> snaps = new List<ProtoPartSnapshot>();
-
-			List<string> transmitterModules = FinePrint.ContractDefs.GetModules("Antenna");
-
-			int l = v.protoPartSnapshots.Count;
-
-			for (int i = 0; i < l; i++)
+			
+			for (int i = v.protoPartSnapshots.Count - 1; i >= 0; i--)
 			{
 				ProtoPartSnapshot p = v.protoPartSnapshots[i];
 
 				if (p == null)
 					continue;
 
-				List<ProtoPartModuleSnapshot> modules = p.modules;
-
-				int m = modules.Count;
-
-				for (int j = 0; j < m; j++)
+				for (int j = SEP_Utilities.AntennaParts.Count - 1; j >= 0; j--)
 				{
-					ProtoPartModuleSnapshot mod = modules[j];
+					AvailablePart a = SEP_Utilities.AntennaParts.At(j);
 
-					if (mod == null)
+					if (a == null)
 						continue;
 
-					int a = transmitterModules.Count;
+					if (p.partName != a.name)
+						continue;
 
-					bool b = false;
-
-					for (int k = 0; k < a; k++)
-					{
-						string s = transmitterModules[k];
-
-						if (string.IsNullOrEmpty(s))
-							continue;
-
-						if (mod.moduleName == s)
-						{
-							snaps.Add(p);
-							b = true;
-							break;
-						}
-					}
-
-					if (b)
-						break;
+					snaps.Add(p);
+					break;
 				}
 			}
 
@@ -603,11 +624,9 @@ namespace SEPScience
 
 		private float? getBestTransmitterCost(List<ProtoPartSnapshot> parts)
 		{
-			List<string> transmitterModules = FinePrint.ContractDefs.GetModules("Antenna");
-			int l = parts.Count;
 			List<ConfigNode> transmitterNodes = new List<ConfigNode>();
 
-			for (int i = 0; i < l; i++)
+			for (int i = parts.Count - 1; i >= 0; i--)
 			{
 				ProtoPartSnapshot snap = parts[i];
 
@@ -619,13 +638,11 @@ namespace SEPScience
 				if (info == null)
 					continue;
 
-				ConfigNode node = info.partConfig;				
+				ConfigNode node = info.partConfig;
 
 				ConfigNode[] moduleNodes = node.GetNodes("MODULE");
 
-				int n = moduleNodes.Length;
-
-				for (int j = 0; j < n; j++)
+				for (int j = moduleNodes.Length - 1; j >= 0; j--)
 				{
 					ConfigNode nod = moduleNodes[j];
 
@@ -634,20 +651,23 @@ namespace SEPScience
 
 					string name = nod.GetValue("name");
 
-					int t = transmitterModules.Count;
-
 					bool b = false;
 
-					for (int k = 0; k < t; k++)
+					for (int k = SEP_Utilities.AntennaModules.Count - 1; k >= 0; k--)
 					{
-						string s = transmitterModules[k];
+						PartModule mod = SEP_Utilities.AntennaModules[k];
 
-						if (s == name)
-						{
-							transmitterNodes.Add(nod);
-							b = true;
-							break;
-						}
+						if (mod == null)
+							continue;
+
+						string s = mod.moduleName;
+
+						if (s != name)
+							continue;
+					
+						transmitterNodes.Add(nod);
+						b = true;
+						break;
 					}
 
 					if (b)
@@ -733,16 +753,18 @@ namespace SEPScience
 
 					double partialEC = amount;
 
-					double rAmount = 0;
+					double rAmount = resource.amount;
 
-					resource.resourceValues.TryGetValue("amount", ref rAmount);
+					//resource.resourceValues.TryGetValue("amount", ref rAmount);
 
 					if (partialEC >= rAmount)
 						partialEC = rAmount;
 
 					rAmount -= partialEC;
 
-					resource.resourceValues.SetValue("amount", rAmount.ToString());
+					resource.amount = rAmount;
+
+					//resource.resourceValues.SetValue("amount", rAmount.ToString());
 
 					amount -= (float)partialEC;
 
