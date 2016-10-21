@@ -32,6 +32,10 @@ namespace SEPScience.Unity.Interfaces
 {
 	public interface IVesselSection
 	{
+		float Signal { get; }
+
+		Sprite SignalSprite { get; }
+
 		bool IsConnected { get; }
 
 		bool CanTransmit { get; set; }
@@ -49,8 +53,6 @@ namespace SEPScience.Unity.Interfaces
 		bool IsVisible { get; set; }
 
 		IList<IExperimentSection> GetExperiments();
-
-		void ProcessStyle(GameObject obj);
 
 		void setParent(SEP_VesselSection section);
 

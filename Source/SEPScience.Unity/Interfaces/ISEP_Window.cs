@@ -35,12 +35,22 @@ namespace SEPScience.Unity.Interfaces
 
 		bool IsMinimized { get; set; }
 
-		IList<IVesselSection> GetVessels();
+		bool ShowAllVessels { get; }
+
+		IList<IVesselSection> GetVessels { get; }
+
+		IList<IVesselSection> GetBodyVessels(string body);
+
+		IVesselSection CurrentVessel { get; }
+
+		IList<string> GetBodies { get; }
+
+		string CurrentBody { get; }
 
 		void SetAppState(bool on);
 
-		void ProcessStyle(GameObject obj);
-
 		void UpdateWindow();
+
+		void ChangeVessel(bool forward);
 	}
 }
