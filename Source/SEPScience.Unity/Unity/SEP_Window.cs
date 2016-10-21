@@ -36,14 +36,6 @@ namespace SEPScience.Unity.Unity
 	public class SEP_Window : CanvasFader, IBeginDragHandler, IDragHandler, IPointerEnterHandler, IPointerExitHandler
 	{
 		[SerializeField]
-		private Text title = null;
-		[SerializeField]
-		private Toggle minimizeToggle = null;
-		[SerializeField]
-		private Button closeButton = null;
-		[SerializeField]
-		private Button expandButton = null;
-		[SerializeField]
 		private ScrollRect scrollRect = null;
 		[SerializeField]
 		private float fastFadeDuration = 0.2f;
@@ -53,12 +45,34 @@ namespace SEPScience.Unity.Unity
 		private GameObject VesselSectionPrefab = null;
 		[SerializeField]
 		private Transform VesselSectionTransform = null;
+		[SerializeField]
+		private GameObject BodyObjectPrefab = null;
+		[SerializeField]
+		private Transform BodyObjectTransform = null;
+		[SerializeField]
+		private RectTransform VesselExpansion = null;
 
 		private Vector2 mouseStart;
 		private Vector3 windowStart;
 		private RectTransform rect;
 
+		private static SEP_Window window;
 		private ISEP_Window windowInterface;
+
+		private bool expanding;
+		private int movingTo;
+
+		private List<SEP_VesselSection> currentVessels = new List<SEP_VesselSection>();
+
+		public ISEP_Window WindowInterface
+		{
+			get { return windowInterface; }
+		}
+
+		public static SEP_Window Window
+		{
+			get { return window; }
+		}
 
 		public ScrollRect ScrollRect
 		{
@@ -67,6 +81,8 @@ namespace SEPScience.Unity.Unity
 
 		protected override void Awake()
 		{
+			window = this;
+
 			base.Awake();
 
 			rect = GetComponent<RectTransform>();
@@ -79,13 +95,41 @@ namespace SEPScience.Unity.Unity
 
 		private void Update()
 		{
+			if (!expanding)
+				return;
+
+			if (VesselExpansion == null)
+				return;
+
+			float currentX = VesselExpansion.anchoredPosition.x;
+
+			if (currentX < movingTo)
+			{
+				VesselExpansion.anchoredPosition = new Vector2(VesselExpansion.anchoredPosition.x + 5, VesselExpansion.anchoredPosition.y);
+
+				if (VesselExpansion.anchoredPosition.x >= movingTo)
+				{
+					VesselExpansion.anchoredPosition = new Vector2(100, VesselExpansion.anchoredPosition.y);
+					expanding = false;
+				}
+			}
+			else
+			{
+				VesselExpansion.anchoredPosition = new Vector2(VesselExpansion.anchoredPosition.x - 5, VesselExpansion.anchoredPosition.y);
+
+				if (VesselExpansion.anchoredPosition.x <= movingTo)
+				{
+					VesselExpansion.anchoredPosition = new Vector2(-90, VesselExpansion.anchoredPosition.y);
+					expanding = false;
+				}
+			}
 			if (windowInterface == null)
 				return;
 
 			if (!windowInterface.IsVisible)
 				return;
 
-			windowInterface.UpdateWindow();
+			windowInterface.UpdateWindow();			
 		}
 
 		public void onResize(BaseEventData eventData)
@@ -126,7 +170,109 @@ namespace SEPScience.Unity.Unity
 
 			windowInterface = window;
 
-			CreateVesselSections(windowInterface.GetVessels());
+			if (windowInterface.ShowAllVessels)
+			{
+				CreateVesselSections(windowInterface.GetVessels);
+
+				if (VesselExpansion != null)
+					VesselExpansion.gameObject.SetActive(false);
+			}
+			else
+			{
+				CreateVesselSections(windowInterface.GetBodyVessels(windowInterface.CurrentBody));
+
+				CreateBodySections(windowInterface.GetBodies);
+			}
+		}
+
+		private void CreateBodySections(IList<string> bodies)
+		{
+			if (windowInterface == null)
+				return;
+
+			if (bodies == null)
+				return;
+
+			for (int i = bodies.Count - 1; i >= 0; i--)
+			{
+				string b = bodies[i];
+
+				if (string.IsNullOrEmpty(b))
+					continue;
+
+				IList<IVesselSection> vessels = windowInterface.GetBodyVessels(b);
+
+				if (vessels.Count <= 0)
+					continue;
+
+				CreateBodySection(b, vessels.Count);
+			}
+		}
+
+		private void CreateBodySection(string body, int count)
+		{
+			if (BodyObjectPrefab == null || BodyObjectTransform == null)
+				return;
+
+			GameObject sectionObject = Instantiate(BodyObjectPrefab);
+
+			if (sectionObject == null)
+				return;
+
+			sectionObject.transform.SetParent(BodyObjectTransform, false);
+
+			SEP_CelestialBodyObject bodyObject = sectionObject.GetComponent<SEP_CelestialBodyObject>();
+
+			if (bodyObject == null)
+				return;
+
+			bodyObject.setBody(body, count);
+		}
+
+		public void AddBodySection(string body)
+		{
+			if (windowInterface == null)
+				return;
+
+			IList<IVesselSection> vessels = windowInterface.GetBodyVessels(body);
+
+			if (vessels.Count <= 0)
+				return;
+
+			CreateBodySection(body, vessels.Count);
+		}
+
+		public void SetCurrentBody(string body)
+		{
+			if (windowInterface == null)
+				return;
+
+			for (int i = currentVessels.Count - 1; i >= 0; i--)
+			{
+				SEP_VesselSection vessel = currentVessels[i];
+
+				if (vessel == null)
+					continue;
+
+				vessel.gameObject.SetActive(false);
+
+				Destroy(vessel.gameObject);
+			}
+
+			CreateVesselSections(windowInterface.GetBodyVessels(body));
+		}
+
+		public void OnExpandToggle(bool isOn)
+		{
+			if (VesselExpansion == null)
+				return;
+
+			expanding = true;
+
+			if (isOn)
+				movingTo = 100;
+			else
+				movingTo = -90;
 		}
 
 		public void OnBeginDrag(PointerEventData eventData)
@@ -164,14 +310,14 @@ namespace SEPScience.Unity.Unity
 			windowInterface.SetAppState(false);
 		}
 
-		public void MinimizeToggle(bool max)
+		public void MinimizeToggle()
 		{
 			if (windowInterface == null)
 				return;
 
-			windowInterface.IsMinimized = !max;
+			windowInterface.IsMinimized = true;
 
-			setSize(max);
+			Fade(0, fastFadeDuration, Kill);
 		}
 
 		public void FadeIn()
@@ -184,11 +330,6 @@ namespace SEPScience.Unity.Unity
 			Fade(0.6f, slowFadeDuration);
 		}
 
-		private void setSize(bool max)
-		{
-		
-		}
-
 		private void CreateVesselSections(IList<IVesselSection> sections)
 		{
 			if (sections == null)
@@ -197,11 +338,7 @@ namespace SEPScience.Unity.Unity
 			if (sections.Count <= 0)
 				return;
 
-			if (VesselSectionPrefab == null)
-				return;
-
-			if (VesselSectionTransform == null)
-				return;
+			currentVessels.Clear();
 
 			for (int i = sections.Count - 1; i >= 0; i--)
 			{
@@ -216,12 +353,13 @@ namespace SEPScience.Unity.Unity
 
 		private void CreateVesselSection(IVesselSection section)
 		{
+			if (VesselSectionPrefab == null || VesselSectionTransform == null)
+				return;
+
 			GameObject sectionObject = Instantiate(VesselSectionPrefab);
 
 			if (sectionObject == null)
 				return;
-
-			windowInterface.ProcessStyle(sectionObject);
 
 			sectionObject.transform.SetParent(VesselSectionTransform, false);
 
@@ -230,7 +368,9 @@ namespace SEPScience.Unity.Unity
 			if (vSection == null)
 				return;
 
-			vSection.setVessel(section, this);
+			vSection.setVessel(section);
+
+			currentVessels.Add(vSection);
 		}
 
 		public void addVesselSection(GameObject obj)
@@ -247,6 +387,13 @@ namespace SEPScience.Unity.Unity
 		private void Hide()
 		{
 			gameObject.SetActive(false);
+		}
+
+		private void Kill()
+		{
+			gameObject.SetActive(false);
+
+			Destroy(gameObject);
 		}
 	}
 }
