@@ -34,15 +34,15 @@ using UnityEngine;
 namespace SEPScience.SEP_UI.Windows
 {
 
-	[SEP_KSPAddonImproved(SEP_KSPAddonImproved.Startup.TimeElapses, false)]
+	[KSPAddon(KSPAddon.Startup.AllGameScenes, false)]
 	public class SEP_AppLauncher : MonoBehaviour, ISEP_Window
 	{
 		private static Texture icon;
 		private ApplicationLauncherButton button;
 
 		private SEP_Window window;
-		private GameObject window_Obj;
-		private static GameObject window_Prefab;
+		private SEP_Compact compactWindow;
+		private SEP_GameParameters settings;
 
 		private bool windowSticky;
 		private bool _windowMinimized;
@@ -51,11 +51,24 @@ namespace SEPScience.SEP_UI.Windows
 		private Vector3 anchor;
 
 		private List<SEP_VesselSection> vessels = new List<SEP_VesselSection>();
+		private int _currentVessel;
+		private string _currentBody;
 
 		public bool IsMinimized
 		{
 			get { return _windowMinimized; }
-			set { _windowMinimized = value; }
+			set
+			{
+				_windowMinimized = value;
+
+				if (!_isVisible)
+					return;
+
+				if (value)
+					OpenCompact();
+				else
+					OpenStandard();
+			}
 		}
 
 		public bool IsVisible
@@ -64,11 +77,111 @@ namespace SEPScience.SEP_UI.Windows
 			set { _isVisible = value; }
 		}
 
-		public IList<IVesselSection> GetVessels()
+		public bool ShowAllVessels
 		{
-			List<IVesselSection> vesselList = new List<IVesselSection>(vessels.ToArray());
+			get { return settings.showAllVessels; }
+		}
+
+		public IList<IVesselSection> GetVessels
+		{
+			get
+			{
+				List<IVesselSection> vesselList = new List<IVesselSection>(vessels.ToArray());
+
+				return vesselList;
+			}
+		}
+
+		public IList<IVesselSection> GetBodyVessels(string body)
+		{
+			List<IVesselSection> vesselList = new List<IVesselSection>();
+
+			int l = vessels.Count;
+
+			for (int i = 0; i < l; i++)
+			{
+				SEP_VesselSection vessel = vessels[i];
+
+				if (vessel == null)
+					continue;
+
+				if (vessel.VesselBody == null)
+					continue;
+
+				vesselList.Add(vessel);
+			}
+
+			if (vesselList.Count > 0)
+				_currentBody = body;
 
 			return vesselList;
+		}
+
+		public IList<string> GetBodies
+		{
+			get
+			{
+				List<string> bodies = new List<string>();
+
+				for (int i = FlightGlobals.Bodies.Count - 1; i >= 0; i--)
+				{
+					CelestialBody body = FlightGlobals.Bodies[i];
+
+					if (body == null)
+						continue;
+
+					for (int j = vessels.Count - 1; j >= 0; j--)
+					{
+						SEP_VesselSection vessel = vessels[j];
+
+						if (vessel == null)
+							continue;
+
+						if (vessel.VesselBody != body)
+							continue;
+
+						bodies.Add(body.bodyName);
+						break;
+					}
+				}
+
+				return bodies;
+			}
+		}
+
+		public string CurrentBody
+		{
+			get { return _currentBody; }
+		}
+
+		public void ChangeVessel(bool forward)
+		{
+			int i = _currentVessel + (forward ? 1 : -1);
+
+			if (i < 0)
+				_currentVessel = vessels.Count - 1;
+
+			if (i > vessels.Count)
+				_currentVessel = 0;
+
+			if (compactWindow == null)
+				return;
+
+			compactWindow.SetNewVessel(vessels[_currentVessel]);
+		}
+
+		public IVesselSection CurrentVessel
+		{
+			get
+			{
+				if (vessels.Count > _currentVessel)
+					return vessels[_currentVessel];
+
+				if (vessels.Count > 0)
+					return vessels[0];
+
+				return null;
+			}
 		}
 
 		public void SetAppState(bool on)
@@ -79,14 +192,6 @@ namespace SEPScience.SEP_UI.Windows
 				button.SetFalse(true);
 		}
 
-		public void ProcessStyle(GameObject obj)
-		{
-			if (obj == null)
-				return;
-
-			SEP_UI_Utilities.processComponents(obj);
-		}
-
 		public void UpdateWindow()
 		{
 
@@ -94,16 +199,21 @@ namespace SEPScience.SEP_UI.Windows
 
 		private void Awake()
 		{
+			if (HighLogic.LoadedSceneIsEditor)
+				Destroy(gameObject);
+
 			if (icon == null)
-				icon = SEP_UI_Loader.Images.LoadAsset<Texture2D>("toolbar_icon");
-
-			if (window_Prefab == null)
-				window_Prefab = SEP_UI_Loader.Prefabs.LoadAsset<GameObject>("sep_window");
-
+				icon = GameDatabase.Instance.GetTexture("GameData/SEPScience/Resources/toolbar_icon", false);
+			
 			StartCoroutine(getVessels());
 
 			GameEvents.onGUIApplicationLauncherReady.Add(onReady);
 			GameEvents.onGUIApplicationLauncherUnreadifying.Add(onUnreadifying);
+		}
+
+		private void Start()
+		{
+			settings = HighLogic.CurrentGame.Parameters.CustomParams<SEP_GameParameters>();
 		}
 
 		private void OnDestroy()
@@ -122,10 +232,7 @@ namespace SEPScience.SEP_UI.Windows
 			}
 
 			if (window != null)
-				Destroy(window);
-
-			if (window_Obj != null)
-				Destroy(window_Obj);
+				Destroy(window.gameObject);
 		}
 		
 		private void onReady()
@@ -230,10 +337,18 @@ namespace SEPScience.SEP_UI.Windows
 
 		private void Open()
 		{
-			if (window_Prefab == null)
+			if (_windowMinimized)
+				OpenCompact();
+			else
+				OpenStandard();
+		}
+
+		private void OpenStandard()
+		{
+			if (SEP_UI_Loader.WindowPrefab == null)
 				return;
 
-			if (window != null && window_Obj != null)
+			if (window != null)
 			{
 				window.gameObject.SetActive(true);
 
@@ -242,16 +357,14 @@ namespace SEPScience.SEP_UI.Windows
 				return;
 			}
 
-			window_Obj = Instantiate(window_Prefab, getAnchor(), Quaternion.identity) as GameObject;
+			GameObject obj = Instantiate(SEP_UI_Loader.WindowPrefab, getAnchor(), Quaternion.identity) as GameObject;
 
-			if (window_Obj == null)
+			if (obj == null)
 				return;
 
-			SEP_UI_Utilities.processComponents(window_Obj);
+			obj.transform.SetParent(ApplicationLauncher.Instance.appSpace, false);
 
-			window_Obj.transform.SetParent(ApplicationLauncher.Instance.appSpace, false);
-
-			window = window_Obj.GetComponent<SEP_Window>();
+			window = obj.GetComponent<SEP_Window>();
 
 			if (window == null)
 				return;
@@ -261,14 +374,46 @@ namespace SEPScience.SEP_UI.Windows
 			window.gameObject.SetActive(true);
 		}
 
+		private void OpenCompact()
+		{
+			if (SEP_UI_Loader.CompactPrefab == null)
+				return;
+
+			if (compactWindow != null)
+			{
+				compactWindow.gameObject.SetActive(true);
+
+				compactWindow.FadeIn();
+
+				return;
+			}
+
+			GameObject obj = Instantiate(SEP_UI_Loader.CompactPrefab, getAnchor(), Quaternion.identity) as GameObject;
+
+			if (obj == null)
+				return;
+
+			obj.transform.SetParent(ApplicationLauncher.Instance.appSpace, false);
+
+			compactWindow = obj.GetComponent<SEP_Compact>();
+
+			if (compactWindow == null)
+				return;
+
+			compactWindow.setWindow(this);
+
+			compactWindow.gameObject.SetActive(true);
+		}
+
 		private void Close()
 		{
 			windowSticky = false;
 
-			if (window == null)
-				return;
+			if (window != null)
+				window.close();
 
-			window.close();
+			if (compactWindow != null)
+				compactWindow.Close();
 		}
 
 
