@@ -26,108 +26,325 @@ THE SOFTWARE.
 
 using System.IO;
 using System.Reflection;
+using SEPScience.SEP_UI;
+using SEPScience.Unity;
+using SEPScience.Unity.Unity;
 using UnityEngine;
-using KSP.UI;
+using UnityEngine.UI;
+using KSP.UI.Screens.Flight.Dialogs;
+using TMPro;
 
 namespace SEPScience.SEP_UI
 {
-	[KSPAddon(KSPAddon.Startup.Instantly, false)]
+	[KSPAddon(KSPAddon.Startup.EveryScene, false)]
 	public class SEP_UI_Loader : MonoBehaviour
 	{
 		private static bool loaded;
-		private static bool running;
+		private static bool TMPLoaded;
+		private static bool UILoaded;
 
-		private static AssetBundle images;
-		private static AssetBundle prefabs;
+		private static Sprite sliderFrontForeground;
+		private static Sprite sliderBackBackground;
+		private static Sprite sliderBackForeground;
+		private static Color sliderFrontForeColor;
+		private static Color sliderBackBackColor;
+		private static Color sliderBackForeColor;
 
-		public static AssetBundle Images
+		private static GameObject[] loadedPrefabs;
+
+		private static GameObject windowPrefab;
+		private static GameObject compactPrefab;
+
+		public static GameObject WindowPrefab
 		{
-			get { return images; }
+			get { return windowPrefab; }
 		}
 
-		public static AssetBundle Prefabs
+		public static GameObject CompactPrefab
 		{
-			get { return prefabs; }
+			get { return compactPrefab; }
 		}
 
 		private void Awake()
 		{
-			string path = KSPUtil.ApplicationRootPath + "GameData/SurfaceExperimentPackage/Resources";
+			if (loaded)
+				Destroy(gameObject);
 
-			images = AssetBundle.CreateFromFile(path + "/sep_images.ksp");
-			prefabs = AssetBundle.CreateFromFile(path + "/sep_prefab.ksp");
-		}
-
-		private static GameObject uiPrefab;
-		private RectTransform uiWindow;
-
-		//private void Start()
-		//{
-		//	if (running)
-		//		Destroy(gameObject);
-
-		//	running = true;
-
-		//	//StartCoroutine(UILoad());
-
-		//	if (loaded && uiPrefab != null)
-		//		UICreate(uiPrefab);
-		//	else
-		//		UILoad();
-		//}
-
-		private void OnDestroy()
-		{
-			running = false;
-		}
-
-		private void UILoad()
-		{
-			var path = KSPUtil.ApplicationRootPath + "GameData/SurfaceExperimentPackage/Resources/sep_ui.ksp";
-
-			print("[SEP] Asset bundles load");
-			WWW bundleRequest = new WWW("file://" + path);
-
-			//yield return bundleRequest;
-
-
-			if (bundleRequest.assetBundle == null)
+			if (loadedPrefabs == null)
 			{
-				print("[SEP] Failed to load AssetBundle!\n" + path + "\n" + bundleRequest.error + "\n" + bundleRequest.assetBundle);
-				return;
-				//yield break;
+				string path = KSPUtil.ApplicationRootPath + "GameData/SurfaceExperimentPackage/Resources";
+
+				AssetBundle prefabs = AssetBundle.LoadFromFile(path + "/sep_prefab.ksp");
+
+				if (prefabs != null)
+					loadedPrefabs = prefabs.LoadAllAssets<GameObject>();
 			}
 
-			var loadRequest = bundleRequest.assetBundle.LoadAssetAsync<GameObject>("assets/prefabs/sep_window.prefab");
-
-			//yield return loadRequest;
-
-			uiPrefab = loadRequest.asset as GameObject;
-
-			if (uiPrefab == null)
+			if (loadedPrefabs != null)
 			{
-				print("[SEP] Failed to find the prefab in the AssetBundle!");
-				return;
-				//yield break;
+				if (!TMPLoaded)
+					processTMPPrefabs();
+
+				if (UISkinManager.defaultSkin != null && !UILoaded)
+				{
+					if (sliderFrontForeground == null || sliderBackBackground == null || sliderBackForeground == null)
+					{
+						ExperimentsResultDialog scienceDialogPrefab = UnityEngine.Object.Instantiate<GameObject>(AssetBase.GetPrefab("ScienceResultsDialog")).GetComponent<ExperimentsResultDialog>();
+
+						if (scienceDialogPrefab != null)
+						{
+							Slider[] sliders = scienceDialogPrefab.GetComponentsInChildren<Slider>(); ;
+
+							Slider backSlider = sliders[0];
+							Slider frontSlider = sliders[1];
+
+							sliderBackBackground = processSliderSprites(backSlider, true, ref sliderBackBackColor);
+							sliderBackForeground = processSliderSprites(backSlider, false, ref sliderBackForeColor);
+
+							sliderFrontForeground = processSliderSprites(frontSlider, false, ref sliderFrontForeColor);
+						}
+					}
+
+					processUIPrefabs();
+				}
 			}
 
-			loaded = true;
+			if (TMPLoaded && UILoaded)
+				loaded = true;
 
-			UICreate(uiPrefab);
+			Destroy(gameObject);
 		}
 
-		private void UICreate(GameObject prefab)
+
+		private void processTMPPrefabs()
 		{
-			print("[SEP] UI Instantiate");
-			GameObject go = Instantiate(prefab);
+			for (int i = loadedPrefabs.Length - 1; i >= 0; i--)
+			{
+				GameObject o = loadedPrefabs[i];
 
-			// Set the parrent to the stock appCanvas
-			go.transform.SetParent(UIMasterController.Instance.appCanvas.transform, false);
+				if (o.name == "SEP_Window")
+					windowPrefab = o;
+				else if (o.name == "SEP_Compact")
+					compactPrefab = o;
 
-			uiWindow = go.transform as RectTransform;
+				if (o != null)
+					processTMP(o);
+			}
 
-			uiWindow.gameObject.SetActive(true);
+			TMPLoaded = true;
+		}
 
+		private void processTMP(GameObject obj)
+		{
+			TextHandler[] handlers = obj.GetComponentsInChildren<TextHandler>(true);
+
+			if (handlers == null)
+				return;
+
+			for (int i = 0; i < handlers.Length; i++)
+				TMProFromText(handlers[i]);
+		}
+
+		private void TMProFromText(TextHandler handler)
+		{
+			if (handler == null)
+				return;
+
+			Text text = handler.GetComponent<Text>();
+
+			if (text == null)
+				return;
+
+			string t = text.text;
+			Color c = text.color;
+			int i = text.fontSize;
+			bool r = text.raycastTarget;
+			FontStyles sty = getStyle(text.fontStyle);
+			TextAlignmentOptions align = getAnchor(text.alignment);
+			float spacing = text.lineSpacing;
+			GameObject obj = text.gameObject;
+
+			MonoBehaviour.DestroyImmediate(text);
+
+			SEP_TextMeshProHolder tmp = obj.AddComponent<SEP_TextMeshProHolder>();
+
+			tmp.text = t;
+			tmp.color = c;
+			tmp.fontSize = i;
+			tmp.raycastTarget = r;
+			tmp.alignment = align;
+			tmp.fontStyle = sty;
+			tmp.lineSpacing = spacing;
+
+			tmp.font = Resources.Load("Fonts/Calibri SDF", typeof(TMP_FontAsset)) as TMP_FontAsset;
+			tmp.fontSharedMaterial = Resources.Load("Fonts/Materials/Calibri Dropshadow", typeof(Material)) as Material;
+
+			tmp.enableWordWrapping = true;
+			tmp.isOverlay = false;
+			tmp.richText = true;
+		}
+
+		private FontStyles getStyle(FontStyle style)
+		{
+			switch (style)
+			{
+				case FontStyle.Normal:
+					return FontStyles.Normal;
+				case FontStyle.Bold:
+					return FontStyles.Bold;
+				case FontStyle.Italic:
+					return FontStyles.Italic;
+				case FontStyle.BoldAndItalic:
+					return FontStyles.Bold;
+				default:
+					return FontStyles.Normal;
+			}
+		}
+
+		private TextAlignmentOptions getAnchor(TextAnchor anchor)
+		{
+			switch (anchor)
+			{
+				case TextAnchor.UpperLeft:
+					return TextAlignmentOptions.TopLeft;
+				case TextAnchor.UpperCenter:
+					return TextAlignmentOptions.Top;
+				case TextAnchor.UpperRight:
+					return TextAlignmentOptions.TopRight;
+				case TextAnchor.MiddleLeft:
+					return TextAlignmentOptions.MidlineLeft;
+				case TextAnchor.MiddleCenter:
+					return TextAlignmentOptions.Midline;
+				case TextAnchor.MiddleRight:
+					return TextAlignmentOptions.MidlineRight;
+				case TextAnchor.LowerLeft:
+					return TextAlignmentOptions.BottomLeft;
+				case TextAnchor.LowerCenter:
+					return TextAlignmentOptions.Bottom;
+				case TextAnchor.LowerRight:
+					return TextAlignmentOptions.BottomRight;
+				default:
+					return TextAlignmentOptions.Center;
+			}
+		}
+
+		private static Sprite processSliderSprites(Slider slider, bool back, ref Color color)
+		{
+			if (slider == null)
+				return null;
+
+			if (back)
+			{
+				Image background = slider.GetComponentInChildren<Image>();
+
+				if (background == null)
+					return null;
+
+				color = background.color;
+
+				return background.sprite;
+			}
+			else
+			{
+				RectTransform fill = slider.fillRect;
+
+				if (fill == null)
+					return null;
+
+				Image fillImage = fill.GetComponent<Image>();
+
+				if (fillImage == null)
+					return null;
+
+				color = fillImage.color;
+
+				return fillImage.sprite;
+			}
+		}
+
+		private void processUIPrefabs()
+		{
+			for (int i = loadedPrefabs.Length - 1; i >= 0; i--)
+			{
+				GameObject o = loadedPrefabs[i];
+
+				if (o != null)
+					processUIComponents(o);
+			}
+
+			UILoaded = true;
+		}
+
+		private void processUIComponents(GameObject obj)
+		{
+			SEP_Style[] styles = obj.GetComponentsInChildren<SEP_Style>(true);
+
+			if (styles == null)
+				return;
+
+			for (int i = 0; i < styles.Length; i++)
+				processComponents(styles[i]);
+		}
+
+		private static Styles getStyle(UIStyle style, UIStyleState state)
+		{
+			Styles s = new Styles();
+
+			if (style != null)
+			{
+				s.Font = style.font;
+				s.Style = style.fontStyle;
+				s.Size = style.fontSize;
+			}
+
+			if (state != null)
+			{
+				s.Color = state.textColor;
+			}
+
+			return s;
+		}
+
+		private void processComponents(SEP_Style style)
+		{
+			if (style == null)
+				return;
+
+			UISkinDef skin = UISkinManager.defaultSkin;
+
+			if (skin == null)
+				return;
+
+			switch (style.ElementType)
+			{
+				case SEP_Style.ElementTypes.Window:
+					style.setImage(skin.window.normal.background, Image.Type.Sliced);
+					break;
+				case SEP_Style.ElementTypes.Box:
+					style.setImage(skin.box.normal.background, Image.Type.Sliced);
+					break;
+				case SEP_Style.ElementTypes.Button:
+					style.setButton(skin.button.normal.background, skin.button.highlight.background, skin.button.active.background, skin.button.disabled.background);
+					break;
+				case SEP_Style.ElementTypes.ToggleButton:
+					style.setToggle(skin.button.normal.background, skin.button.highlight.background, skin.button.active.background, skin.button.disabled.background);
+					break;
+				case SEP_Style.ElementTypes.ToggleAlwaysOn:
+					style.setToggle(skin.button.normal.background, skin.button.highlight.background, skin.button.active.background, skin.button.normal.background);
+					break;
+				case SEP_Style.ElementTypes.Label:
+					style.setText(getStyle(skin.label, skin.label.normal));
+					break;
+				case SEP_Style.ElementTypes.VertScroll:
+					style.setScrollbar(skin.verticalScrollbar.normal.background, skin.verticalScrollbarThumb.normal.background);
+					break;
+				case SEP_Style.ElementTypes.Slider:
+					style.setSlider(sliderFrontForeground, sliderFrontForeColor);
+					break;
+				case SEP_Style.ElementTypes.SliderBackground:
+					style.setSlider(sliderBackBackground, sliderBackForeground, sliderBackBackColor, sliderBackForeColor);
+					break;
+			}
 		}
 	}
 }
