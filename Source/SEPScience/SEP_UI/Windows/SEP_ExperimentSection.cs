@@ -166,7 +166,23 @@ namespace SEPScience.SEP_UI.Windows
 			if (!handler.experimentRunning)
 				return "";
 
-			float time = handler.experimentTime / handler.calibration;
+			float calib = handler.calibration;
+
+			if (SEP_Controller.Instance.UsingCommNet)
+			{
+				float signal = (float)vessel.Connection.SignalStrength - 0.5f;
+
+				if (signal < 0)
+					signal /= 2;
+
+				float adjust = Mathf.Abs(calib - 1) / 0.25f;
+
+				float bonus = calib * signal * (1 / adjust);
+
+				calib += bonus;
+			}
+
+			float time = handler.experimentTime / calib;
 
 			time *= 21600;
 

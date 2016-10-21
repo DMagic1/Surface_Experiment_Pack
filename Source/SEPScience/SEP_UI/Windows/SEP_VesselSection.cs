@@ -138,6 +138,54 @@ namespace SEPScience.SEP_UI.Windows
 			get { return _name; }
 		}
 
+		public float Signal
+		{
+			get
+			{
+				if (vessel == null)
+					return 0;
+
+				if (vessel.Connection == null)
+					return 0;
+
+				return (float)vessel.Connection.SignalStrength;
+			}
+		}
+
+		public Sprite SignalSprite
+		{
+			get
+			{
+				if (!SEP_Utilities.spritesLoaded)
+					return null;
+
+				if (vessel == null)
+					return null;
+
+				if (vessel.Connection == null)
+					return null;
+
+				if (SEP_Utilities.CommNetSprites.Length < 5)
+					return null;
+
+				switch(vessel.Connection.Signal)
+				{
+					case CommNet.SignalStrength.None:
+						return SEP_Utilities.CommNetSprites[0];
+					case CommNet.SignalStrength.Red:
+						return SEP_Utilities.CommNetSprites[1];
+					case CommNet.SignalStrength.Orange:
+						return SEP_Utilities.CommNetSprites[2];
+					case CommNet.SignalStrength.Yellow:
+						return SEP_Utilities.CommNetSprites[3];
+					case CommNet.SignalStrength.Green:
+						return SEP_Utilities.CommNetSprites[4];
+					default:
+						return null;
+				}
+			}
+		}
+
 		public bool IsVisible
 		{
 			get { return _isvisible; }
@@ -178,14 +226,6 @@ namespace SEPScience.SEP_UI.Windows
 		public IList<IExperimentSection> GetExperiments()
 		{
 			return new List<IExperimentSection>(experimentSections.ToArray());
-		}
-
-		public void ProcessStyle(GameObject obj)
-		{
-			if (obj == null)
-				return;
-
-			SEP_UI_Utilities.processComponents(obj);
 		}
 
 		public void setParent(SEPScience.Unity.Unity.SEP_VesselSection section)
@@ -237,6 +277,17 @@ namespace SEPScience.SEP_UI.Windows
 					handler.host.PauseExperiment();
 				else
 					handler.experimentRunning = false;
+			}
+		}
+
+		public CelestialBody VesselBody
+		{
+			get
+			{
+				if (vessel == null)
+					return null;
+
+				return vessel.mainBody;
 			}
 		}
 
