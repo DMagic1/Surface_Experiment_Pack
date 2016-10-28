@@ -100,9 +100,17 @@ namespace SEPScience.Unity.Unity
 			windowInterface.ChangeVessel(true);
 		}
 
+		public void OnClose()
+		{
+			if (windowInterface == null)
+				return;
+
+			windowInterface.SetAppState(false);
+		}
+
 		public void Close()
 		{
-			Fade(0, fastFadeDuration, Hide);
+			Fade(0, fastFadeDuration, Kill, false);
 		}
 
 		private void Hide()
@@ -116,8 +124,6 @@ namespace SEPScience.Unity.Unity
 				return;
 
 			windowInterface.IsMinimized = false;
-
-			Fade(0, fastFadeDuration, Kill);
 		}
 
 		private void Kill()
@@ -146,7 +152,7 @@ namespace SEPScience.Unity.Unity
 
 		public void OnPointerEnter(PointerEventData eventData)
 		{
-			FadeIn();
+			FadeIn(false);
 		}
 
 		public void OnPointerExit(PointerEventData eventData)
@@ -154,9 +160,9 @@ namespace SEPScience.Unity.Unity
 			FadeOut();
 		}
 
-		public void FadeIn()
+		public void FadeIn(bool overrule)
 		{
-			Fade(1, fastFadeDuration);
+			Fade(1, fastFadeDuration, null, true, overrule);
 		}
 
 		public void FadeOut()
