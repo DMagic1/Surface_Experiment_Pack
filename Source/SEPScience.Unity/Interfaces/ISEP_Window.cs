@@ -37,6 +37,8 @@ namespace SEPScience.Unity.Interfaces
 
 		bool ShowAllVessels { get; }
 
+		float Scale { get; }
+
 		IList<IVesselSection> GetVessels { get; }
 
 		IList<IVesselSection> GetBodyVessels(string body);
@@ -45,7 +47,7 @@ namespace SEPScience.Unity.Interfaces
 
 		IList<string> GetBodies { get; }
 
-		string CurrentBody { get; }
+		string CurrentBody { get; set; }
 
 		void SetAppState(bool on);
 
