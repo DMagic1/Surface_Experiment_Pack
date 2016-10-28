@@ -51,6 +51,8 @@ namespace SEPScience.Unity.Unity
 		private Transform BodyObjectTransform = null;
 		[SerializeField]
 		private RectTransform VesselExpansion = null;
+		[SerializeField]
+		private TextHandler VesselPanelHandle = null;
 
 		private Vector2 mouseStart;
 		private Vector3 windowStart;
@@ -62,6 +64,9 @@ namespace SEPScience.Unity.Unity
 		private bool expanding;
 		private int movingTo;
 
+		private string currentBody;
+
+		private List<SEP_CelestialBodyObject> currentBodies = new List<SEP_CelestialBodyObject>();
 		private List<SEP_VesselSection> currentVessels = new List<SEP_VesselSection>();
 
 		public ISEP_Window WindowInterface
@@ -77,6 +82,11 @@ namespace SEPScience.Unity.Unity
 		public ScrollRect ScrollRect
 		{
 			get { return scrollRect; }
+		}
+
+		public string CurrentBody
+		{
+			get { return currentBody; }
 		}
 
 		protected override void Awake()
@@ -109,7 +119,7 @@ namespace SEPScience.Unity.Unity
 
 				if (VesselExpansion.anchoredPosition.x >= movingTo)
 				{
-					VesselExpansion.anchoredPosition = new Vector2(100, VesselExpansion.anchoredPosition.y);
+					VesselExpansion.anchoredPosition = new Vector2(movingTo, VesselExpansion.anchoredPosition.y);
 					expanding = false;
 				}
 			}
@@ -119,7 +129,7 @@ namespace SEPScience.Unity.Unity
 
 				if (VesselExpansion.anchoredPosition.x <= movingTo)
 				{
-					VesselExpansion.anchoredPosition = new Vector2(-90, VesselExpansion.anchoredPosition.y);
+					VesselExpansion.anchoredPosition = new Vector2(movingTo, VesselExpansion.anchoredPosition.y);
 					expanding = false;
 				}
 			}
@@ -179,10 +189,14 @@ namespace SEPScience.Unity.Unity
 			}
 			else
 			{
+				currentBody = windowInterface.CurrentBody;
+
 				CreateVesselSections(windowInterface.GetBodyVessels(windowInterface.CurrentBody));
 
 				CreateBodySections(windowInterface.GetBodies);
 			}
+
+			transform.localScale *= window.Scale;
 		}
 
 		private void CreateBodySections(IList<string> bodies)
@@ -227,6 +241,8 @@ namespace SEPScience.Unity.Unity
 				return;
 
 			bodyObject.setBody(body, count);
+
+			currentBodies.Add(bodyObject);
 		}
 
 		public void AddBodySection(string body)
@@ -259,7 +275,29 @@ namespace SEPScience.Unity.Unity
 				Destroy(vessel.gameObject);
 			}
 
-			CreateVesselSections(windowInterface.GetBodyVessels(body));
+			for (int i = currentBodies.Count - 1; i >= 0; i--)
+			{
+				SEP_CelestialBodyObject b = currentBodies[i];
+
+				if (b == null)
+					continue;
+
+				if (b.Body == body)
+					continue;
+
+				b.DisableBody();
+			}
+
+			var vessels = windowInterface.GetBodyVessels(body);
+
+			if (vessels.Count <= 0)
+				return;
+
+			currentBody = body;
+
+			windowInterface.CurrentBody = body;
+
+			CreateVesselSections(vessels);
 		}
 
 		public void OnExpandToggle(bool isOn)
@@ -270,9 +308,19 @@ namespace SEPScience.Unity.Unity
 			expanding = true;
 
 			if (isOn)
-				movingTo = 100;
+			{
+				movingTo = 194;
+
+				if (VesselPanelHandle != null)
+					VesselPanelHandle.OnTextUpdate.Invoke("<<");
+			}
 			else
-				movingTo = -90;
+			{
+				movingTo = 3;
+
+				if (VesselPanelHandle != null)
+					VesselPanelHandle.OnTextUpdate.Invoke(">>");
+			}
 		}
 
 		public void OnBeginDrag(PointerEventData eventData)
@@ -294,7 +342,7 @@ namespace SEPScience.Unity.Unity
 
 		public void OnPointerEnter(PointerEventData eventData)
 		{
-			FadeIn();
+			FadeIn(false);
 		}
 
 		public void OnPointerExit(PointerEventData eventData)
@@ -316,13 +364,11 @@ namespace SEPScience.Unity.Unity
 				return;
 
 			windowInterface.IsMinimized = true;
-
-			Fade(0, fastFadeDuration, Kill);
 		}
 
-		public void FadeIn()
+		public void FadeIn(bool overrule)
 		{
-			Fade(1, fastFadeDuration);
+			Fade(1, fastFadeDuration, null, true, overrule);
 		}
 
 		public void FadeOut()
@@ -381,7 +427,7 @@ namespace SEPScience.Unity.Unity
 
 		public void close()
 		{
-			Fade(0, fastFadeDuration, Hide);
+			Fade(0, fastFadeDuration, Kill, false);
 		}
 
 		private void Hide()
