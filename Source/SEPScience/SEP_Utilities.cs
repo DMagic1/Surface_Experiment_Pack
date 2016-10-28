@@ -45,10 +45,7 @@ namespace SEPScience
 		public static List<PartModule> AntennaModules = new List<PartModule>();
 		public static DictionaryValueList<string, AvailablePart> AntennaParts = new DictionaryValueList<string, AvailablePart>();
 		public static bool antennaModulesLoaded = false;
-
-		private static FieldInfo actionListField;
-		public static bool UIWindowReflectionLoaded = false;
-
+		
 		public static Sprite[] CommNetSprites;
 		public static bool spritesLoaded = false;
 
@@ -135,38 +132,6 @@ namespace SEPScience
 			CommNetSprites = new Sprite[5] { ss1, ss2, ss3, ss4, ss5 };
 
 			spritesLoaded = true;
-		}
-
-		public static void assignReflectionMethod()
-		{
-			try
-			{
-				Type t = typeof(UIPartActionWindow);
-
-				actionListField = t.GetField("listItems", BindingFlags.NonPublic | BindingFlags.Instance);
-
-				if (actionListField != null)
-				{
-					log("UI Part Action Window Item List Loaded", logLevels.log);
-					UIWindowReflectionLoaded = true;
-				}
-				else
-				{
-					log("UI Part Action Window Item List Failed To Loaded", logLevels.log);
-					UIWindowReflectionLoaded = false;
-				}
-			}
-			catch (Exception e)
-			{
-				log("Error in loading UI Part Action Window item list\n{0}", logLevels.error, e);
-				UIWindowReflectionLoaded = false;
-			}
-			
-		}
-
-		public static FieldInfo UIActionListField(UIPartActionWindow window)
-		{
-			return actionListField;
 		}
 
 		public static List<string> parsePartStringList(string source)
@@ -579,6 +544,34 @@ namespace SEPScience
 						return " while in space high over " + body.theName + "'s " + b;
 				}
 			}
+		}
+
+		public static float getTotalVesselEC(Vessel v)
+		{
+			double ec = 0;
+
+			for (int i = v.Parts.Count - 1; i >= 0; i--)
+			{
+				Part p = v.Parts[i];
+
+				if (p == null)
+					continue;
+
+				for (int j = p.Resources.Count - 1; j >= 0; j--)
+				{
+					PartResource r = p.Resources[j];
+
+					if (r == null)
+						continue;
+
+					if (r.resourceName != "ElectricCharge")
+						continue;
+
+					ec += r.amount;
+				}
+			}
+
+			return (float)ec;
 		}
 
 		public static float getTotalVesselEC(ProtoVessel v)
