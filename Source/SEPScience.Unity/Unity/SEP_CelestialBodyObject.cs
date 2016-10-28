@@ -11,18 +11,42 @@ namespace SEPScience.Unity.Unity
 		private TextHandler BodyTitle = null;
 		[SerializeField]
 		private TextHandler VesselCount = null;
+		[SerializeField]
+		private Image SelectedImage = null;
 
-		private string Body;
+		private string body;
 
-		public void setBody(string body, int count)
+		public string Body
 		{
-			Body = body;
+			get { return body; }
+		}
+
+		public void setBody(string b, int count)
+		{
+			body = b;
 
 			if (BodyTitle != null)
-				BodyTitle.OnTextUpdate.Invoke(body);
+				BodyTitle.OnTextUpdate.Invoke(b + ":  ");
 
 			if (VesselCount != null)
-				VesselCount.OnTextUpdate.Invoke(count + " Vessels");
+				VesselCount.OnTextUpdate.Invoke(string.Format("{0}  Station{1}", count, count > 1 ? "s" : ""));
+
+			if (SEP_Window.Window == null)
+				return;
+
+			if (SelectedImage == null)
+				return;
+
+			if (SEP_Window.Window.CurrentBody == body)
+				SelectedImage.gameObject.SetActive(true);
+			else
+				SelectedImage.gameObject.SetActive(false);
+		}
+
+		public void DisableBody()
+		{
+			if (SelectedImage != null)
+				SelectedImage.gameObject.SetActive(false);
 		}
 
 		public void SetBody()
@@ -30,7 +54,13 @@ namespace SEPScience.Unity.Unity
 			if (SEP_Window.Window == null)
 				return;
 
-			SEP_Window.Window.SetCurrentBody(Body);
+			if (SEP_Window.Window.CurrentBody == body)
+				return;
+
+			SEP_Window.Window.SetCurrentBody(body);
+
+			if (SelectedImage != null)
+				SelectedImage.gameObject.SetActive(true);
 		}
 	}
 }
