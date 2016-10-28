@@ -101,7 +101,7 @@ namespace SEPScience.SEP_UI.Windows
 				return;
 
 			if (vessel.loaded)
-				currentVesselEC = SEP_Utilities.getTotalVesselEC(vessel.protoVessel);
+				currentVesselEC = SEP_Utilities.getTotalVesselEC(vessel);
 
 			_ectotal = getECString();
 
@@ -160,10 +160,10 @@ namespace SEPScience.SEP_UI.Windows
 					return null;
 
 				if (vessel == null)
-					return null;
+					return SEP_Utilities.CommNetSprites[0];
 
 				if (vessel.Connection == null)
-					return null;
+					return SEP_Utilities.CommNetSprites[0];
 
 				if (SEP_Utilities.CommNetSprites.Length < 5)
 					return null;
