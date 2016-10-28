@@ -36,6 +36,7 @@ namespace SEPScience.Unity
 	{
 		private CanvasGroup canvas;
 		private IEnumerator fader;
+		private bool allowInterrupt = true;
 
 		protected virtual void Awake()
 		{
@@ -47,12 +48,12 @@ namespace SEPScience.Unity
 			get { return fader != null; }
 		}
 
-		protected void Fade(float to, float duration, Action call = null)
+		protected void Fade(float to, float duration, Action call = null, bool interrupt = true, bool overrule = false)
 		{
 			if (canvas == null)
 				return;
 
-			Fade(canvas.alpha, to, duration, call);
+			Fade(canvas.alpha, to, duration, call, interrupt, overrule);
 		}
 
 		protected void Alpha(float to)
@@ -64,17 +65,22 @@ namespace SEPScience.Unity
 			canvas.alpha = to;
 		}
 
-		private void Fade(float from, float to, float duration, Action call)
+		private void Fade(float from, float to, float duration, Action call, bool interrupt, bool overrule)
 		{
+			if (!allowInterrupt && !overrule)
+				return;
+
 			if (fader != null)
 				StopCoroutine(fader);
 
-			fader = FadeRoutine(from, to, duration, call);
+			fader = FadeRoutine(from, to, duration, call, interrupt);
 			StartCoroutine(fader);
 		}
 
-		private IEnumerator FadeRoutine(float from, float to, float duration, Action call)
+		private IEnumerator FadeRoutine(float from, float to, float duration, Action call, bool interrupt)
 		{
+			allowInterrupt = interrupt;
+
 			yield return new WaitForEndOfFrame();
 
 			float f = 0;
@@ -88,6 +94,8 @@ namespace SEPScience.Unity
 
 			if (call != null)
 				call.Invoke();
+
+			allowInterrupt = true;
 
 			fader = null;
 		}
