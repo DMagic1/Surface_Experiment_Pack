@@ -56,7 +56,6 @@
     <Compile Include="Unity\SEP_Style.cs" />
     <Compile Include="Unity\SEP_VesselSection.cs" />
     <Compile Include="Unity\SEP_Window.cs" />
-    <Compile Include="Styles.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
