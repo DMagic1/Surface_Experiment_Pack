@@ -55,6 +55,7 @@ namespace SEPScience.SEP_UI
 				return;
 
 			_handler.OnTextUpdate.AddListener(new UnityAction<string>(UpdateText));
+			_handler.OnColorUpdate.AddListener(new UnityAction<Color>(UpdateColor));
 		}
 
 		/// <summary>
@@ -64,6 +65,11 @@ namespace SEPScience.SEP_UI
 		private void UpdateText(string t)
 		{
 			text = t;
+		}
+
+		private void UpdateColor(Color c)
+		{
+			color = c;
 		}
 	}
 }
