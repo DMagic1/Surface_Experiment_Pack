@@ -475,16 +475,19 @@ namespace SEPScience
 
 			if (SEP_Controller.Instance.UsingCommNet)
 			{
-				float signal = (float)vessel.Connection.SignalStrength - 0.5f;
+				if (vessel.Connection != null)
+				{
+					float signal = (float)vessel.Connection.SignalStrength - 0.5f;
 
-				if (signal < 0)
-					signal /= 2;
+					if (signal < 0)
+						signal /= 2;
 
-				float adjust = Mathf.Abs(calib - 1) / 0.25f;
+					float adjust = Mathf.Abs(calib - 1) / 0.25f;
 
-				float bonus = calib * signal * (1 / adjust);
+					float bonus = calib * signal * (1 / adjust);
 
-				calib += bonus;
+					calib += bonus;
+				}
 			}
 
 			float time = experimentTime / calib;
@@ -562,9 +565,6 @@ namespace SEPScience
 			if (window == null)
 				return;
 
-			if (!SEP_Utilities.UIWindowReflectionLoaded)
-				return;
-
 			if (FlightGlobals.ActiveVessel == vessel)
 				return;
 
@@ -577,34 +577,19 @@ namespace SEPScience
 				if (!b.guiActive)
 					continue;
 
-				try
-				{
-					window.GetType().InvokeMember("AddFieldControl", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreReturn | BindingFlags.InvokeMethod, null, window, new object[] { b, part, this });
-				}
-				catch (Exception e)
-				{
-					SEP_Utilities.log("Error in adding KSP Field to unfocused UI Part Action Window\n{0}", logLevels.error, e);
-					continue;
-				}
+				window.AddFieldControl(b, part, this);
+			}
 
-				try
-				{
-					var items = SEP_Utilities.UIActionListField(window).GetValue(window) as List<UIPartActionItem>;
+			var items = window.ListItems;
 
-					int c = items.Count;
+			int c = items.Count;
 
-					for (int j = 0; j < c; j++)
-					{
-						UIPartActionItem item = items[j];
+			for (int j = 0; j < c; j++)
+			{
+				UIPartActionItem item = items[j];
 
-						if (item is UIPartActionLabel)
-							item.UpdateItem();
-					}
-				}
-				catch (Exception e)
-				{
-					SEP_Utilities.log("Error in setting KSP Field on unfocused UI Part Action Window\n{0}", logLevels.error, e);
-				}
+				if (item is UIPartActionLabel)
+					item.UpdateItem();
 			}
 		}
 

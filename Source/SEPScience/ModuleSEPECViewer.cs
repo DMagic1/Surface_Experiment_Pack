@@ -55,13 +55,8 @@ namespace SEPScience
 			if (UIPartActionController.Instance == null)
 				return;
 
-			if (!SEP_Utilities.UIWindowReflectionLoaded)
-				return;
-
 			if (FlightGlobals.ActiveVessel == vessel)
 				return;
-
-			bool update = false;
 
 			int l = part.Resources.Count;
 
@@ -69,48 +64,22 @@ namespace SEPScience
 			{
 				PartResource r = part.Resources[i];
 
-				try
-				{
-					window.GetType().InvokeMember("AddResourceFlightControl", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreReturn | BindingFlags.InvokeMethod, null, window, new object[] { r });
-					update = true;
-				}
-				catch (Exception e)
-				{
-					SEP_Utilities.log("Error in adding EC Field to unfocused SEP UI Part Action Window\n{0}", logLevels.error, e);
-					continue;
-				}
-
-				try
-				{
-					var items = SEP_Utilities.UIActionListField(window).GetValue(window) as List<UIPartActionItem>;
-
-					int c = items.Count;
-
-					for (int j = 0; j < c; j++)
-					{
-						UIPartActionItem item = items[j];
-
-						if (item is UIPartActionResource)
-							item.UpdateItem();
-					}
-				}
-				catch (Exception e)
-				{
-					SEP_Utilities.log("Error in setting KSP Field on unfocused UI Part Action Window\n{0}", logLevels.error, e);
-				}
+				window.AddResourceFlightControl(r);
 			}
 
-			if (update)
+			var items = window.ListItems;
+
+			int c = items.Count;
+
+			for (int j = 0; j < c; j++)
 			{
-				try
-				{
-					window.GetType().InvokeMember("PointerUpdate", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.IgnoreReturn | BindingFlags.InvokeMethod, null, window, null);
-				}
-				catch (Exception e)
-				{
-					SEP_Utilities.log("Error in updating unfocused UI Part Action Window position\n{0}", logLevels.error, e);
-				}
+				UIPartActionItem item = items[j];
+
+				if (item is UIPartActionResource)
+					item.UpdateItem();
 			}
+
+			window.PointerUpdate();
 		}
 
 		private void onWindowSpawn(UIPartActionWindow win)
