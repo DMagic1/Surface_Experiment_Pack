@@ -286,25 +286,6 @@ namespace SEPScience.SEP_UI
 				processComponents(styles[i]);
 		}
 
-		private static Styles getStyle(UIStyle style, UIStyleState state)
-		{
-			Styles s = new Styles();
-
-			if (style != null)
-			{
-				s.Font = style.font;
-				s.Style = style.fontStyle;
-				s.Size = style.fontSize;
-			}
-
-			if (state != null)
-			{
-				s.Color = state.textColor;
-			}
-
-			return s;
-		}
-
 		private void processComponents(SEP_Style style)
 		{
 			if (style == null)
@@ -328,12 +309,6 @@ namespace SEPScience.SEP_UI
 					break;
 				case SEP_Style.ElementTypes.ToggleButton:
 					style.setToggle(skin.button.normal.background, skin.button.highlight.background, skin.button.active.background, skin.button.disabled.background);
-					break;
-				case SEP_Style.ElementTypes.ToggleAlwaysOn:
-					style.setToggle(skin.button.normal.background, skin.button.highlight.background, skin.button.active.background, skin.button.normal.background);
-					break;
-				case SEP_Style.ElementTypes.Label:
-					style.setText(getStyle(skin.label, skin.label.normal));
 					break;
 				case SEP_Style.ElementTypes.VertScroll:
 					style.setScrollbar(skin.verticalScrollbar.normal.background, skin.verticalScrollbarThumb.normal.background);

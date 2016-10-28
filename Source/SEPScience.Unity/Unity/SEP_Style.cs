@@ -38,11 +38,9 @@ namespace SEPScience.Unity.Unity
 			Box,
 			Button,
 			ToggleButton,
-			ToggleAlwaysOn,
-			Label,
 			VertScroll,
 			Slider,
-			SliderBackground
+			SliderBackground,
 		}
 
 		[SerializeField]
@@ -53,10 +51,8 @@ namespace SEPScience.Unity.Unity
 			get { return elementType; }
 		}
 
-		private void setSelectable(Styles style, Sprite normal, Sprite highlight, Sprite active, Sprite inactive)
+		private void setSelectable(Sprite normal, Sprite highlight, Sprite active, Sprite inactive)
 		{
-			setText(style, GetComponentInChildren<Text>());
-
 			Selectable select = GetComponent<Selectable>();
 
 			if (select == null)
@@ -71,27 +67,6 @@ namespace SEPScience.Unity.Unity
 			spriteState.pressedSprite = active;
 			spriteState.disabledSprite = inactive;
 			select.spriteState = spriteState;
-		}
-
-		private void setText(Styles style, Text text)
-		{
-			if (style == null)
-				return;
-
-			if (text == null)
-				return;
-
-			if (style.Font != null)
-				text.font = style.Font;
-
-			text.fontSize = style.Size;
-			text.fontStyle = style.Style;
-			text.color = style.Color;
-		}
-
-		public void setText(Styles style)
-		{
-			setText(style, GetComponent<Text>());
 		}
 
 		public void setScrollbar(Sprite background, Sprite thumb)
@@ -132,25 +107,20 @@ namespace SEPScience.Unity.Unity
 
 		public void setButton(Sprite normal, Sprite highlight, Sprite active, Sprite inactive)
 		{
-			setSelectable(null, normal, highlight, active, inactive);
+			setSelectable(normal, highlight, active, inactive);
 		}
 
 		public void setToggle(Sprite normal, Sprite highlight, Sprite active, Sprite inactive)
 		{
-			setSelectable(null, normal, highlight, active, inactive);
+			setSelectable(normal, highlight, active, inactive);
 
-			Toggle toggle = GetComponent<Toggle>();
+			Image onImage = GetComponentsInChildren<Image>(true)[1];
 
-			if (toggle == null)
+			if (onImage == null)
 				return;
 
-			Image toggleImage = toggle.graphic as Image;
-
-			if (toggleImage == null)
-				return;
-
-			toggleImage.sprite = active;
-			toggleImage.type = Image.Type.Sliced;
+			onImage.sprite = active;
+			onImage.type = Image.Type.Sliced;
 		}
 
 		public void setSlider(Sprite background, Sprite foreground, Color backColor, Color foreColor)
