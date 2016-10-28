@@ -29,11 +29,12 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using KSP.UI.Screens.Flight;
+using FinePrint.Utilities;
 using UnityEngine;
 
 namespace SEPScience
 {
-	[KSPAddon(KSPAddon.Startup.EveryScene, false)]
+	[KSPAddon(KSPAddon.Startup.AllGameScenes, false)]
 	public class SEP_Controller : MonoBehaviour
 	{
 		private static bool running;
@@ -45,7 +46,7 @@ namespace SEPScience
 		private bool setup;
 		private bool transmissionUpgrade;
 		private bool usingCommNet = true;
-		private Dictionary<Guid, List<SEP_ExperimentHandler>> experiments = new Dictionary<Guid,List<SEP_ExperimentHandler>>();
+		private DictionaryValueList<Guid, List<SEP_ExperimentHandler>> experiments = new DictionaryValueList<Guid, List<SEP_ExperimentHandler>>();
 		private List<Vessel> experimentVessels = new List<Vessel>();
 
 		public static SEP_Controller Instance
@@ -75,25 +76,17 @@ namespace SEPScience
 
 		private void Start()
 		{
-			GameScenes scene = HighLogic.LoadedScene;
-
-			if (scene == GameScenes.MAINMENU)
-			{
-				if (!SEP_Utilities.partModulesLoaded)
-					SEP_Utilities.loadPartModules();
-
-				if (!SEP_Utilities.antennaModulesLoaded)
-					SEP_Utilities.loadAntennaParts();
-
-				if (!SEP_Utilities.UIWindowReflectionLoaded)
-					SEP_Utilities.assignReflectionMethod();
-			}			
-
-			if (!(scene == GameScenes.FLIGHT || scene == GameScenes.TRACKSTATION || scene == GameScenes.SPACECENTER))
+			if (HighLogic.LoadedSceneIsEditor)
 			{
 				running = false;
 				Destroy(gameObject);
 			}
+
+			if (!SEP_Utilities.partModulesLoaded)
+				SEP_Utilities.loadPartModules();
+
+			if (!SEP_Utilities.antennaModulesLoaded)
+				SEP_Utilities.loadAntennaParts();
 
 			if (!SEP_Utilities.spritesLoaded)
 				StartCoroutine(loadSprites());
@@ -106,7 +99,7 @@ namespace SEPScience
 			if (running)
 				Destroy(gameObject);
 
-			if (scene == GameScenes.FLIGHT)
+			if (HighLogic.LoadedSceneIsFlight)
 				StartCoroutine(attachWindowListener());
 
 			instance = this;
@@ -126,7 +119,7 @@ namespace SEPScience
 			GameEvents.onLevelWasLoaded.Remove(onReady);
 			GameEvents.OnGameSettingsApplied.Remove(onSettingsApplied);
 
-			var handlers = experiments.SelectMany(e => e.Value).ToList();
+			var handlers = experiments.Values.SelectMany(e => e).ToList();
 
 			int l = handlers.Count;
 
@@ -215,7 +208,7 @@ namespace SEPScience
 
 		private void populateExperiments()
 		{
-			experiments = new Dictionary<Guid, List<SEP_ExperimentHandler>>();
+			experiments = new DictionaryValueList<Guid, List<SEP_ExperimentHandler>>();
 
 			int l = FlightGlobals.Vessels.Count;
 
@@ -229,7 +222,7 @@ namespace SEPScience
 				if (v.vesselType == VesselType.Debris)
 					continue;
 
-				if (experiments.ContainsKey(v.id))
+				if (experiments.Contains(v.id))
 					continue;
 
 				List<SEP_ExperimentHandler> handlers = new List<SEP_ExperimentHandler>();
@@ -275,8 +268,11 @@ namespace SEPScience
 
 				if (handlers.Count > 0)
 				{
-					experiments.Add(v.id, handlers);
-					experimentVessels.Add(v);
+					if (VesselUtilities.VesselHasModuleName("ModuleSEPStation", v))
+					{
+						experiments.Add(v.id, handlers);
+						experimentVessels.Add(v);
+					}
 				}
 			}
 
@@ -290,7 +286,7 @@ namespace SEPScience
 				 where mod.Handler != null
 				 select mod.Handler).ToList();
 
-			if (experiments.ContainsKey(v.id))
+			if (experiments.Contains(v.id))
 			{
 				if (modules.Count > 0)
 					experiments[v.id] = modules;
@@ -302,19 +298,22 @@ namespace SEPScience
 			}
 			else if (modules.Count > 0)
 			{
-				experiments.Add(v.id, modules);
-				experimentVessels.Add(v);
+				if (VesselUtilities.VesselHasModuleName("ModuleSEPStation", v))
+				{
+					experiments.Add(v.id, modules);
+					experimentVessels.Add(v);
+				}
 			}
 		}
 
 		public bool VesselLoaded(Vessel v)
 		{
-			return experiments.ContainsKey(v.id);
+			return experiments.Contains(v.id);
 		}
 
 		public SEP_ExperimentHandler getHandler(Vessel v, uint id)
 		{
-			if (!experiments.ContainsKey(v.id))
+			if (!experiments.Contains(v.id))
 				return null;
 
 			List<SEP_ExperimentHandler> handlers = experiments[v.id];
@@ -340,7 +339,7 @@ namespace SEPScience
 
 		public List<SEP_ExperimentHandler> getHandlers(Vessel v)
 		{
-			if (!experiments.ContainsKey(v.id))
+			if (!experiments.Contains(v.id))
 				return new List<SEP_ExperimentHandler>();
 
 			return experiments[v.id];
@@ -355,7 +354,7 @@ namespace SEPScience
 
 			for (int i = 0; i < l; i++)
 			{
-				List<SEP_ExperimentHandler> modules = experiments.ElementAt(i).Value;
+				List<SEP_ExperimentHandler> modules = experiments.At(i);
 
 				int c = modules.Count;
 
@@ -395,16 +394,19 @@ namespace SEPScience
 
 					if (usingCommNet)
 					{
-						float signal = (float)m.vessel.Connection.SignalStrength - 0.5f;
+						if (m.vessel.Connection != null)
+						{
+							float signal = (float)m.vessel.Connection.SignalStrength - 0.5f;
 
-						if (signal < 0)
-							signal /= 2;
+							if (signal < 0)
+								signal /= 2;
 
-						float adjust = Mathf.Abs(calib - 1) / 0.25f;
+							float adjust = Mathf.Abs(calib - 1) / 0.25f;
 
-						float bonus = calib * signal * (1 / adjust);
+							float bonus = calib * signal * (1 / adjust);
 
-						calib += bonus;
+							calib += bonus;
+						}
 					}
 
 					t /= calib;
