@@ -36,7 +36,7 @@ namespace SEPScience
 		[Persistent]
 		public bool showAllVessels;
 		[Persistent]
-		public bool fadeout;
+		public bool fadeout = true;
 		[Persistent]
 		public float scale = 1;
 
@@ -44,7 +44,6 @@ namespace SEPScience
 		private string fullPath;
 		private SEP_GameParameters settings;
 
-		private static bool loaded;
 		private static SEP_PersistentSettings instance;
 
 		public static SEP_PersistentSettings Instance
@@ -54,13 +53,11 @@ namespace SEPScience
 
 		private void Awake()
 		{
-			if (loaded)
+			if (instance != null)
 				Destroy(gameObject);
 
 			DontDestroyOnLoad(gameObject);
-
-			loaded = true;
-
+			
 			instance = this;
 
 			fullPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), fileName).Replace("\\", "/");
@@ -70,10 +67,12 @@ namespace SEPScience
 				SEP_Utilities.log("[SEP Science] Settings file loaded", logLevels.log);
 		}
 
-		private void OnDestroy()
-		{
-			GameEvents.OnGameSettingsApplied.Remove(SettingsApplied);
-		}
+		//private void OnDestroy()
+		//{
+		//	instance = null;
+
+		//	GameEvents.OnGameSettingsApplied.Remove(SettingsApplied);
+		//}
 
 		public void SettingsApplied()
 		{
