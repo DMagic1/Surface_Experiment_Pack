@@ -39,6 +39,8 @@ namespace SEPScience.Unity.Interfaces
 
 		float Scale { get; }
 
+		Vector3 WindowPos { get; set; }
+
 		IList<IVesselSection> GetVessels { get; }
 
 		IList<IVesselSection> GetBodyVessels(string body);

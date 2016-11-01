@@ -24,6 +24,7 @@ THE SOFTWARE.
 */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using SEPScience.Unity.Unity;
@@ -32,6 +33,8 @@ namespace SEPScience.Unity.Interfaces
 {
 	public interface IVesselSection
 	{
+		Guid ID { get; }
+
 		float Signal { get; }
 
 		Sprite SignalSprite { get; }
