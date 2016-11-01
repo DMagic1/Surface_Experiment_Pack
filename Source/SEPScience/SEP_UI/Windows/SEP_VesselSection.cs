@@ -24,6 +24,7 @@ THE SOFTWARE.
 */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using SEPScience.Unity.Interfaces;
@@ -41,6 +42,7 @@ namespace SEPScience.SEP_UI.Windows
 		private bool _cantransmit;
 		private bool _isconnected;
 		private bool _transmitavailable;
+		private Guid _id;
 
 		private double maxVesselEC;
 		private double currentVesselEC;
@@ -60,6 +62,7 @@ namespace SEPScience.SEP_UI.Windows
 
 			vessel = v;
 			_name = v.vesselName;
+			_id = v.id;
 
 			experiments = SEP_Controller.Instance.getHandlers(v);
 
@@ -80,16 +83,12 @@ namespace SEPScience.SEP_UI.Windows
 
 			GameEvents.onVesselWasModified.Add(onVesselModified);
 			GameEvents.onVesselSituationChange.Add(onVesselSituationChange);
-			SEP_Utilities.onExperimentActivate.Add(onAddExperiment);
-			SEP_Utilities.onExperimentDeactivate.Add(onRemoveExperiment);
 		}
 
 		public void OnDestroy()
 		{
 			GameEvents.onVesselWasModified.Remove(onVesselModified);
 			GameEvents.onVesselSituationChange.Remove(onVesselSituationChange);
-			SEP_Utilities.onExperimentActivate.Remove(onAddExperiment);
-			SEP_Utilities.onExperimentDeactivate.Remove(onRemoveExperiment);
 		}
 
 		public void Update()
@@ -104,8 +103,6 @@ namespace SEPScience.SEP_UI.Windows
 				currentVesselEC = SEP_Utilities.getTotalVesselEC(vessel);
 
 			_ectotal = getECString();
-
-			_expcount = getExpCountString();
 
 			_isconnected = true;
 		}
@@ -136,6 +133,11 @@ namespace SEPScience.SEP_UI.Windows
 		public string Name
 		{
 			get { return _name; }
+		}
+
+		public Guid ID
+		{
+			get { return _id; }
 		}
 
 		public float Signal
@@ -291,21 +293,15 @@ namespace SEPScience.SEP_UI.Windows
 			}
 		}
 
-		private void onAddExperiment(Vessel v, SEP_ExperimentHandler h)
+		public void AddExperiment(SEP_ExperimentHandler h)
 		{
-			if (v == null)
-				return;
-
-			if (v != vessel)
-				return;
-
 			if (h == null)
 				return;
 
 			if (h.vessel != vessel)
 				return;
 
-			SEP_ExperimentSection section = addExperimentSection(h);
+			SEP_ExperimentSection section = new SEP_ExperimentSection(h, h.vessel);
 
 			if (section == null)
 				return;
@@ -319,35 +315,46 @@ namespace SEPScience.SEP_UI.Windows
 			vesselUISection.AddExperimentSection(section);
 
 			_expcount = getExpCountString();
+
+			vesselUISection.setExpCount(_expcount);
 		}
 
-		private void onRemoveExperiment(Vessel v, SEP_ExperimentHandler h)
+		public void RemoveExperiment(SEP_ExperimentHandler h)
 		{
-			if (v == null)
-				return;
-
-			if (v != vessel)
-				return;
-
 			if (h == null)
 				return;
 
-			if (experiments.Any(a => a == h))
-				experiments.Remove(h);
-
-			if (experimentSections.Any(e => e.Handler == h))
+			for (int i = experiments.Count - 1; i >= 0; i--)
 			{
-				SEP_ExperimentSection section = experimentSections.FirstOrDefault(x => x.Handler == h);
+				SEP_ExperimentHandler handler = experiments[i];
+
+				if (handler == null)
+					continue;
+
+				if (handler != h)
+					continue;
+
+				experiments.Remove(h);
+				break;
+			}
+
+			for (int i = experimentSections.Count - 1; i >= 0; i--)
+			{
+				SEP_ExperimentSection section = experimentSections[i];
 
 				if (section == null)
-					return;
+					continue;
 
 				section.OnDestroy();
 				experimentSections.Remove(section);
 				section = null;
+
+				break;
 			}
 
 			_expcount = getExpCountString();
+
+			vesselUISection.setExpCount(_expcount);
 		}
 
 		private void addExperimentSections()
@@ -359,13 +366,8 @@ namespace SEPScience.SEP_UI.Windows
 				if (handler == null)
 					return;
 
-				experimentSections.Add(addExperimentSection(experiments[i]));
+				experimentSections.Add(new SEP_ExperimentSection(handler, vessel));
 			}
-		}
-
-		private SEP_ExperimentSection addExperimentSection(SEP_ExperimentHandler handler)
-		{
-			return new SEP_ExperimentSection(handler, vessel);
 		}
 
 		private void onVesselModified(Vessel v)
@@ -390,6 +392,9 @@ namespace SEPScience.SEP_UI.Windows
 				return;
 
 			_situation = getSituationString();
+
+			if (vesselUISection != null)
+				vesselUISection.setBiome(_situation);
 		}
 	}
 }
