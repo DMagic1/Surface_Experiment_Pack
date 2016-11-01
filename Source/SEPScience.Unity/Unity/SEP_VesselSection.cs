@@ -24,6 +24,7 @@ THE SOFTWARE.
 */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -69,6 +70,12 @@ namespace SEPScience.Unity.Unity
 		private Color grey = new Color(0.329412f, 0.329412f, 0.329412f, 1);
 		private IVesselSection vesselInterface;
 		private List<SEP_ExperimentSection> experiments = new List<SEP_ExperimentSection>();
+		private Guid id;
+
+		public Guid ID
+		{
+			get { return id; }
+		}
 
 		private void OnDestroy()
 		{
@@ -88,25 +95,25 @@ namespace SEPScience.Unity.Unity
 			if (TotalEC != null)
 				TotalEC.OnTextUpdate.Invoke(vesselInterface.ECTotal);
 
-			if (ExpCount != null)
-				ExpCount.OnTextUpdate.Invoke(vesselInterface.ExpCount);
-
 			if (Connection != null)
 				Connection.sprite = vesselInterface.SignalSprite;
-
-			if (SituationText != null)
-				SituationText.OnTextUpdate.Invoke(vesselInterface.Situation);
 
 			if (StartAll != null && PauseAll != null)
 			{
 				if (anyRunning())
-					PauseAll.gameObject.SetActive(true);
-				else
+				{
+					if (!PauseAll.gameObject.activeSelf)
+						PauseAll.gameObject.SetActive(true);
+				}
+				else if (PauseAll.gameObject.activeSelf)
 					PauseAll.gameObject.SetActive(false);
 
 				if (anyPaused())
-					StartAll.gameObject.SetActive(true);
-				else
+				{
+					if (!StartAll.gameObject.activeSelf)
+						StartAll.gameObject.SetActive(true);
+				}
+				else if (StartAll.gameObject.activeSelf)
 					StartAll.gameObject.SetActive(false);
 			}
 		}
@@ -117,6 +124,8 @@ namespace SEPScience.Unity.Unity
 				return;
 
 			vesselInterface = vessel;
+
+			id = vessel.ID;
 
 			if (VesselTitle != null)
 				VesselTitle.OnTextUpdate.Invoke(vessel.Name);
@@ -152,7 +161,22 @@ namespace SEPScience.Unity.Unity
 					StartAll.gameObject.SetActive(false);
 			}
 
+			setExpCount(vesselInterface.ExpCount);
+			setBiome(vesselInterface.Situation);
+
 			vesselInterface.setParent(this);
+		}
+
+		public void setExpCount(string s)
+		{
+			if (ExpCount != null)
+				ExpCount.OnTextUpdate.Invoke(s);
+		}
+
+		public void setBiome(string s)
+		{
+			if (SituationText != null)
+				SituationText.OnTextUpdate.Invoke(s);
 		}
 
 		public void setTransmission()
