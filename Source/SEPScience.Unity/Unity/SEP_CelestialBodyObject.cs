@@ -10,8 +10,6 @@ namespace SEPScience.Unity.Unity
 		[SerializeField]
 		private TextHandler BodyTitle = null;
 		[SerializeField]
-		private TextHandler VesselCount = null;
-		[SerializeField]
 		private Image SelectedImage = null;
 
 		private string body;
@@ -26,10 +24,7 @@ namespace SEPScience.Unity.Unity
 			body = b;
 
 			if (BodyTitle != null)
-				BodyTitle.OnTextUpdate.Invoke(b + ":  ");
-
-			if (VesselCount != null)
-				VesselCount.OnTextUpdate.Invoke(string.Format("{0}  Station{1}", count, count > 1 ? "s" : ""));
+				BodyTitle.OnTextUpdate.Invoke(string.Format("{0}: {1} Station{2}", b, count, count > 1 ? "s" : ""));
 
 			if (SEP_Window.Window == null)
 				return;
@@ -41,6 +36,12 @@ namespace SEPScience.Unity.Unity
 				SelectedImage.gameObject.SetActive(true);
 			else
 				SelectedImage.gameObject.SetActive(false);
+		}
+
+		public void UpdateCount(int count)
+		{
+			if (BodyTitle != null)
+				BodyTitle.OnTextUpdate.Invoke(string.Format("{0}: {1} Station{2}", body, count, count > 1 ? "s" : ""));
 		}
 
 		public void DisableBody()
