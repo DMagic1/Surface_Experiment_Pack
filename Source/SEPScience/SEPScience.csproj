@@ -35,9 +35,6 @@
       <HintPath>..\..\..\..\Visual Studio 2013\Projects\KSP Dev\Kerbal Space Program\KSP_x64_Data\Managed\Assembly-CSharp.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="SEPScience.Unity">
-      <HintPath>..\..\..\..\Visual Studio 2013\Projects\SEPScience\SEPScience.Unity\Output\SEPScience.Unity.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="UnityEngine">
       <HintPath>..\..\..\..\Visual Studio 2013\Projects\KSP Dev\Kerbal Space Program\KSP_x64_Data\Managed\UnityEngine.dll</HintPath>
@@ -56,6 +53,7 @@
     <Compile Include="SEP_Controller.cs" />
     <Compile Include="SEP_ExperimentHandler.cs" />
     <Compile Include="SEP_GameParameters.cs" />
+    <Compile Include="SEP_MainMenuWatcher.cs" />
     <Compile Include="SEP_PersistentSettings.cs" />
     <Compile Include="SEP_RecoveryWatcher.cs" />
     <Compile Include="SEP_UIWindow.cs" />
@@ -65,6 +63,12 @@
     <Compile Include="SEP_UI\Windows\SEP_VesselSection.cs" />
     <Compile Include="SEP_Utilities.cs" />
     <Compile Include="SEP_UI\SEP_UI_Loader.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SEPScience.Unity\SEPScience.Unity.csproj">
+      <Project>{76db9583-e023-41a2-a564-cf0262e6949a}</Project>
+      <Name>SEPScience.Unity</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
