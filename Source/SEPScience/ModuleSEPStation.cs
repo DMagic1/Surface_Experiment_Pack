@@ -241,6 +241,9 @@ namespace SEPScience
 			if (FlightGlobals.ActiveVessel == vessel)
 				return;
 
+			if (FlightDriver.Pause)
+				return;
+
 			int l = Fields.Count;
 
 			for (int i = 0; i < l; i++)
