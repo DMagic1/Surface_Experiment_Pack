@@ -31,6 +31,7 @@ using System.Linq;
 using KSP.UI.Screens.Flight;
 using FinePrint.Utilities;
 using UnityEngine;
+using SEPScience.SEP_UI.Windows;
 
 namespace SEPScience
 {
@@ -46,8 +47,7 @@ namespace SEPScience
 		private bool setup;
 		private bool transmissionUpgrade;
 		private bool usingCommNet = true;
-		private DictionaryValueList<Guid, List<SEP_ExperimentHandler>> experiments = new DictionaryValueList<Guid, List<SEP_ExperimentHandler>>();
-		private List<Vessel> experimentVessels = new List<Vessel>();
+		private DictionaryValueList<Vessel, List<SEP_ExperimentHandler>> experiments = new DictionaryValueList<Vessel, List<SEP_ExperimentHandler>>();
 
 		public static SEP_Controller Instance
 		{
@@ -67,11 +67,6 @@ namespace SEPScience
 		public bool UsingCommNet
 		{
 			get { return usingCommNet; }
-		}
-
-		public List<Vessel> Vessels
-		{
-			get { return experimentVessels; }
 		}
 
 		private void Start()
@@ -208,7 +203,7 @@ namespace SEPScience
 
 		private void populateExperiments()
 		{
-			experiments = new DictionaryValueList<Guid, List<SEP_ExperimentHandler>>();
+			experiments = new DictionaryValueList<Vessel, List<SEP_ExperimentHandler>>();
 
 			int l = FlightGlobals.Vessels.Count;
 
@@ -222,7 +217,7 @@ namespace SEPScience
 				if (v.vesselType == VesselType.Debris)
 					continue;
 
-				if (experiments.Contains(v.id))
+				if (experiments.Contains(v))
 					continue;
 
 				List<SEP_ExperimentHandler> handlers = new List<SEP_ExperimentHandler>();
@@ -269,10 +264,7 @@ namespace SEPScience
 				if (handlers.Count > 0)
 				{
 					if (VesselUtilities.VesselHasModuleName("ModuleSEPStation", v))
-					{
-						experiments.Add(v.id, handlers);
-						experimentVessels.Add(v);
-					}
+						experiments.Add(v, handlers);
 				}
 			}
 
@@ -286,37 +278,42 @@ namespace SEPScience
 				 where mod.Handler != null
 				 select mod.Handler).ToList();
 
-			if (experiments.Contains(v.id))
+			if (experiments.Contains(v))
 			{
 				if (modules.Count > 0)
-					experiments[v.id] = modules;
+					experiments[v] = modules;
 				else
 				{
-					experiments.Remove(v.id);
-					experimentVessels.Remove(v);
+					experiments.Remove(v);
+					SEP_AppLauncher.Instance.removeVesselSection(v);
 				}
 			}
 			else if (modules.Count > 0)
 			{
 				if (VesselUtilities.VesselHasModuleName("ModuleSEPStation", v))
 				{
-					experiments.Add(v.id, modules);
-					experimentVessels.Add(v);
+					experiments.Add(v, modules);
+					SEP_AppLauncher.Instance.addVesselSection(v);
 				}
 			}
 		}
 
+		public List<Vessel> GetAllVessels()
+		{
+			return experiments.Keys.ToList();
+		}
+
 		public bool VesselLoaded(Vessel v)
 		{
-			return experiments.Contains(v.id);
+			return experiments.Contains(v);
 		}
 
 		public SEP_ExperimentHandler getHandler(Vessel v, uint id)
 		{
-			if (!experiments.Contains(v.id))
+			if (!experiments.Contains(v))
 				return null;
 
-			List<SEP_ExperimentHandler> handlers = experiments[v.id];
+			List<SEP_ExperimentHandler> handlers = experiments[v];
 
 			int l = handlers.Count;
 
@@ -339,10 +336,10 @@ namespace SEPScience
 
 		public List<SEP_ExperimentHandler> getHandlers(Vessel v)
 		{
-			if (!experiments.Contains(v.id))
+			if (!experiments.Contains(v))
 				return new List<SEP_ExperimentHandler>();
 
-			return experiments[v.id];
+			return experiments[v];
 		}
 
 		private void experimentCheck(double time)
