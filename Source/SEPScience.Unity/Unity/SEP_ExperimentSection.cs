@@ -47,6 +47,7 @@ namespace SEPScience.Unity.Unity
 
 		private IExperimentSection experimentInterface;
 		private SEP_VesselSection parent;
+		private bool toggleState;
 
 		private void OnDestroy()
 		{
@@ -122,6 +123,8 @@ namespace SEPScience.Unity.Unity
 
 			UpdateToggleButton(experimentInterface.IsRunning);
 
+			toggleState = experimentInterface.IsRunning;
+
 			if (BaseSlider != null && FrontSlider != null)
 			{
 				BaseSlider.normalizedValue = Mathf.Clamp01(experimentInterface.Calibration);
@@ -144,6 +147,11 @@ namespace SEPScience.Unity.Unity
 
 		private void UpdateToggleButton(bool isOn)
 		{
+			if (toggleState == isOn)
+				return;
+
+			toggleState = isOn;
+
 			if (ExperimentSelectable == null)
 				return;
 
