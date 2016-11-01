@@ -33,7 +33,7 @@ using SEPScience.Unity.Interfaces;
 namespace SEPScience.Unity.Unity
 {
 	[RequireComponent(typeof(RectTransform))]
-	public class SEP_Window : CanvasFader, IBeginDragHandler, IDragHandler, IPointerEnterHandler, IPointerExitHandler
+	public class SEP_Window : CanvasFader, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerEnterHandler, IPointerExitHandler
 	{
 		[SerializeField]
 		private ScrollRect scrollRect = null;
@@ -61,6 +61,8 @@ namespace SEPScience.Unity.Unity
 		private static SEP_Window window;
 		private ISEP_Window windowInterface;
 
+		private bool dragging;
+		private bool resizing;
 		private bool expanding;
 		private int movingTo;
 
@@ -142,37 +144,6 @@ namespace SEPScience.Unity.Unity
 			windowInterface.UpdateWindow();			
 		}
 
-		public void onResize(BaseEventData eventData)
-		{
-			if (rect == null)
-				return;
-
-			if (!(eventData is PointerEventData))
-				return;
-
-			rect.sizeDelta = new Vector2(rect.sizeDelta.x, rect.sizeDelta.y - ((PointerEventData)eventData).delta.y);
-
-			checkMaxResize((int)rect.sizeDelta.y);
-		}
-
-		private void checkMaxResize(int num)
-		{
-			if (rect.sizeDelta.y < 200)
-				num = 200;
-			else if (rect.sizeDelta.y > 800)
-				num = 800;
-
-			rect.sizeDelta = new Vector2(rect.sizeDelta.x, num);
-		}
-
-		public void onEndResize(BaseEventData eventData)
-		{
-			if (!(eventData is PointerEventData))
-				return;
-
-			checkMaxResize((int)rect.sizeDelta.y);
-		}
-
 		public void setWindow(ISEP_Window window)
 		{
 			if (window == null)
@@ -199,105 +170,23 @@ namespace SEPScience.Unity.Unity
 			transform.localScale *= window.Scale;
 		}
 
-		private void CreateBodySections(IList<string> bodies)
+		public void SetScale(float scale)
 		{
-			if (windowInterface == null)
-				return;
+			Vector3 one = Vector3.one;
 
-			if (bodies == null)
-				return;
-
-			for (int i = bodies.Count - 1; i >= 0; i--)
-			{
-				string b = bodies[i];
-
-				if (string.IsNullOrEmpty(b))
-					continue;
-
-				IList<IVesselSection> vessels = windowInterface.GetBodyVessels(b);
-
-				if (vessels.Count <= 0)
-					continue;
-
-				CreateBodySection(b, vessels.Count);
-			}
+			transform.localScale = one * scale;
 		}
 
-		private void CreateBodySection(string body, int count)
+		public void SetPosition(Vector3 pos)
 		{
-			if (BodyObjectPrefab == null || BodyObjectTransform == null)
+			if (rect == null)
 				return;
 
-			GameObject sectionObject = Instantiate(BodyObjectPrefab);
+			rect.anchoredPosition = new Vector3(pos.x, pos.y, 1);
 
-			if (sectionObject == null)
-				return;
+			rect.sizeDelta = new Vector2(rect.sizeDelta.x, pos.z);
 
-			sectionObject.transform.SetParent(BodyObjectTransform, false);
-
-			SEP_CelestialBodyObject bodyObject = sectionObject.GetComponent<SEP_CelestialBodyObject>();
-
-			if (bodyObject == null)
-				return;
-
-			bodyObject.setBody(body, count);
-
-			currentBodies.Add(bodyObject);
-		}
-
-		public void AddBodySection(string body)
-		{
-			if (windowInterface == null)
-				return;
-
-			IList<IVesselSection> vessels = windowInterface.GetBodyVessels(body);
-
-			if (vessels.Count <= 0)
-				return;
-
-			CreateBodySection(body, vessels.Count);
-		}
-
-		public void SetCurrentBody(string body)
-		{
-			if (windowInterface == null)
-				return;
-
-			for (int i = currentVessels.Count - 1; i >= 0; i--)
-			{
-				SEP_VesselSection vessel = currentVessels[i];
-
-				if (vessel == null)
-					continue;
-
-				vessel.gameObject.SetActive(false);
-
-				Destroy(vessel.gameObject);
-			}
-
-			for (int i = currentBodies.Count - 1; i >= 0; i--)
-			{
-				SEP_CelestialBodyObject b = currentBodies[i];
-
-				if (b == null)
-					continue;
-
-				if (b.Body == body)
-					continue;
-
-				b.DisableBody();
-			}
-
-			var vessels = windowInterface.GetBodyVessels(body);
-
-			if (vessels.Count <= 0)
-				return;
-
-			currentBody = body;
-
-			windowInterface.CurrentBody = body;
-
-			CreateVesselSections(vessels);
+			checkMaxResize((int)rect.sizeDelta.y);
 		}
 
 		public void OnExpandToggle(bool isOn)
@@ -328,6 +217,8 @@ namespace SEPScience.Unity.Unity
 			if (rect == null)
 				return;
 
+			dragging = true;
+
 			mouseStart = eventData.position;
 			windowStart = rect.position;
 		}
@@ -340,6 +231,68 @@ namespace SEPScience.Unity.Unity
 			rect.position = windowStart + (Vector3)(eventData.position - mouseStart);
 		}
 
+		public void OnEndDrag(PointerEventData eventData)
+		{
+			dragging = false;
+
+			if (rect == null)
+				return;
+
+			if (windowInterface == null)
+				return;
+
+			windowInterface.WindowPos = new Vector3(rect.anchoredPosition.x, rect.anchoredPosition.y, rect.sizeDelta.y);
+		}
+
+		public void onBeginResize(BaseEventData eventData)
+		{
+			if (!(eventData is PointerEventData))
+				return;
+
+			resizing = true;
+		}
+
+		public void onResize(BaseEventData eventData)
+		{
+			if (rect == null)
+				return;
+
+			if (!(eventData is PointerEventData))
+				return;
+
+			rect.sizeDelta = new Vector2(rect.sizeDelta.x, rect.sizeDelta.y - ((PointerEventData)eventData).delta.y);
+
+			checkMaxResize((int)rect.sizeDelta.y);
+		}
+
+		private void checkMaxResize(int num)
+		{
+			if (rect.sizeDelta.y < 200)
+				num = 200;
+			else if (rect.sizeDelta.y > 800)
+				num = 800;
+
+			rect.sizeDelta = new Vector2(rect.sizeDelta.x, num);
+		}
+
+		public void onEndResize(BaseEventData eventData)
+		{
+			resizing = false;
+
+			if (!(eventData is PointerEventData))
+				return;
+
+			if (rect == null)
+				return;
+
+			checkMaxResize((int)rect.sizeDelta.y);
+
+			if (windowInterface == null)
+				return;
+
+			windowInterface.WindowPos = new Vector3(rect.anchoredPosition.x, rect.anchoredPosition.y, rect.sizeDelta.y);
+		}
+
 		public void OnPointerEnter(PointerEventData eventData)
 		{
 			FadeIn(false);
@@ -347,7 +300,8 @@ namespace SEPScience.Unity.Unity
 
 		public void OnPointerExit(PointerEventData eventData)
 		{
-			FadeOut();
+			if (!dragging && !resizing)
+				FadeOut();
 		}
 
 		public void OnClose()
@@ -419,10 +373,169 @@ namespace SEPScience.Unity.Unity
 			currentVessels.Add(vSection);
 		}
 
-		public void addVesselSection(GameObject obj)
+		public void addVesselSection(IVesselSection section)
 		{
-			if (obj == null)
+			if (section == null)
 				return;
+
+			CreateVesselSection(section);
+		}
+
+		public void removeVesselSection(IVesselSection section)
+		{
+			if (section == null)
+				return;
+
+			for (int i = currentVessels.Count - 1; i >= 0; i--)
+			{
+				SEP_VesselSection v = currentVessels[i];
+
+				if (v == null)
+					continue;
+
+				if (v.ID != section.ID)
+					continue;
+
+				currentVessels.RemoveAt(i);
+				Destroy(v.gameObject);
+				break;
+			}
+		}
+
+		private void CreateBodySections(IList<string> bodies)
+		{
+			if (windowInterface == null)
+				return;
+
+			if (bodies == null)
+				return;
+
+			for (int i = bodies.Count - 1; i >= 0; i--)
+			{
+				string b = bodies[i];
+
+				if (string.IsNullOrEmpty(b))
+					continue;
+
+				IList<IVesselSection> vessels = windowInterface.GetBodyVessels(b);
+
+				if (vessels.Count <= 0)
+					continue;
+
+				CreateBodySection(b, vessels.Count);
+			}
+		}
+
+		private void CreateBodySection(string body, int count)
+		{
+			if (BodyObjectPrefab == null || BodyObjectTransform == null)
+				return;
+
+			GameObject sectionObject = Instantiate(BodyObjectPrefab);
+
+			if (sectionObject == null)
+				return;
+
+			sectionObject.transform.SetParent(BodyObjectTransform, false);
+
+			SEP_CelestialBodyObject bodyObject = sectionObject.GetComponent<SEP_CelestialBodyObject>();
+
+			if (bodyObject == null)
+				return;
+
+			bodyObject.setBody(body, count);
+
+			currentBodies.Add(bodyObject);
+		}
+
+		public void AddBodySection(string body)
+		{
+			if (windowInterface == null)
+				return;
+
+			IList<IVesselSection> vessels = windowInterface.GetBodyVessels(body);
+
+			if (vessels.Count <= 0)
+				return;
+
+			CreateBodySection(body, vessels.Count);
+		}
+
+		public void RemoveBodySection(string body)
+		{
+			for (int i = currentBodies.Count - 1; i >= 0; i--)
+			{
+				SEP_CelestialBodyObject b = currentBodies[i];
+
+				if (b == null)
+					continue;
+
+				if (b.Body != body)
+					continue;
+
+				currentBodies.RemoveAt(i);
+				Destroy(b.gameObject);
+				break;
+			}
+		}
+
+		public void SetCurrentBody(string body)
+		{
+			if (windowInterface == null)
+				return;
+
+			for (int i = currentVessels.Count - 1; i >= 0; i--)
+			{
+				SEP_VesselSection vessel = currentVessels[i];
+
+				if (vessel == null)
+					continue;
+
+				vessel.gameObject.SetActive(false);
+
+				Destroy(vessel.gameObject);
+			}
+
+			for (int i = currentBodies.Count - 1; i >= 0; i--)
+			{
+				SEP_CelestialBodyObject b = currentBodies[i];
+
+				if (b == null)
+					continue;
+
+				if (b.Body == body)
+					continue;
+
+				b.DisableBody();
+			}
+
+			var vessels = windowInterface.GetBodyVessels(body);
+
+			if (vessels.Count <= 0)
+				return;
+
+			currentBody = body;
+
+			windowInterface.CurrentBody = body;
+
+			CreateVesselSections(vessels);
+		}
+
+		public void UpdateBodySection(string body, int count)
+		{
+			for (int i = currentBodies.Count - 1; i >= 0; i--)
+			{
+				SEP_CelestialBodyObject b = currentBodies[i];
+
+				if (b == null)
+					continue;
+
+				if (b.Body != body)
+					continue;
+
+				b.UpdateCount(count);
+				break;
+			}
 		}
 
 		public void close()
