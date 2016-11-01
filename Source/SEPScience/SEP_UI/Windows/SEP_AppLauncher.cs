@@ -24,6 +24,7 @@ THE SOFTWARE.
 */
 #endregion
 
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using SEPScience.Unity.Unity;
@@ -38,6 +39,8 @@ namespace SEPScience.SEP_UI.Windows
 	public class SEP_AppLauncher : MonoBehaviour, ISEP_Window
 	{
 		private static Texture icon;
+		private static SEP_AppLauncher instance;
+		private static Vector3 _windowPos;
 		private ApplicationLauncherButton button;
 
 		private SEP_Window window;
@@ -48,11 +51,14 @@ namespace SEPScience.SEP_UI.Windows
 		private bool _windowMinimized;
 		private bool _isVisible = true;
 
-		private Vector3 anchor;
-
-		private List<SEP_VesselSection> vessels = new List<SEP_VesselSection>();
+		private DictionaryValueList<Guid, SEP_VesselSection> vessels;
 		private int _currentVessel;
 		private string _currentBody;
+
+		public static SEP_AppLauncher Instance
+		{
+			get { return instance; }
+		}
 
 		public bool IsMinimized
 		{
@@ -89,9 +95,25 @@ namespace SEPScience.SEP_UI.Windows
 			get { return settings.scale; }
 		}
 
+		public Vector3 WindowPos
+		{
+			get { return _windowPos; }
+			set { _windowPos = value; }
+		}
+
 		public IList<IVesselSection> GetVessels
 		{
-			get { return new List<IVesselSection>(vessels.ToArray()); }
+			get
+			{
+				var v = vessels.GetListEnumerator();
+
+				List<IVesselSection> sections = new List<IVesselSection>();
+
+				while (v.MoveNext())
+					sections.Add(v.Current);
+
+				return new List<IVesselSection>(sections);
+			}
 		}
 
 		public IList<IVesselSection> GetBodyVessels(string body)
@@ -105,7 +127,7 @@ namespace SEPScience.SEP_UI.Windows
 
 			for (int i = 0; i < l; i++)
 			{
-				SEP_VesselSection vessel = vessels[i];
+				SEP_VesselSection vessel = vessels.At(i);
 
 				if (vessel == null)
 					continue;
@@ -137,7 +159,7 @@ namespace SEPScience.SEP_UI.Windows
 
 					for (int j = vessels.Count - 1; j >= 0; j--)
 					{
-						SEP_VesselSection vessel = vessels[j];
+						SEP_VesselSection vessel = vessels.At(j);
 
 						if (vessel == null)
 							continue;
@@ -190,7 +212,7 @@ namespace SEPScience.SEP_UI.Windows
 			if (compactWindow == null)
 				return;
 
-			compactWindow.SetNewVessel(vessels[i]);
+			compactWindow.SetNewVessel(vessels.At(i));
 		}
 
 		public IVesselSection CurrentVessel
@@ -198,10 +220,10 @@ namespace SEPScience.SEP_UI.Windows
 			get
 			{
 				if (vessels.Count > _currentVessel)
-					return vessels[_currentVessel];
+					return vessels.At(_currentVessel);
 
 				if (vessels.Count > 0)
-					return vessels[0];
+					return vessels.At(0);
 
 				return null;
 			}
@@ -225,6 +247,13 @@ namespace SEPScience.SEP_UI.Windows
 			if (HighLogic.LoadedSceneIsEditor)
 				Destroy(gameObject);
 
+			if (instance != null)
+				Destroy(gameObject);
+
+			instance = this;
+
+			vessels = new DictionaryValueList<Guid, SEP_VesselSection>();
+
 			if (icon == null)
 				icon = GameDatabase.Instance.GetTexture("SurfaceExperimentPackage/Resources/Toolbar_Icon", false);
 			
@@ -233,6 +262,8 @@ namespace SEPScience.SEP_UI.Windows
 			GameEvents.onGUIApplicationLauncherReady.Add(onReady);
 			GameEvents.onGUIApplicationLauncherUnreadifying.Add(onUnreadifying);
 			GameEvents.OnGameSettingsApplied.Add(onSettingsApplied);
+			SEP_Utilities.onExperimentActivate.Add(onExpActivate);
+			SEP_Utilities.onExperimentDeactivate.Add(onExpDeactivate);
 		}
 
 		private void Start()
@@ -242,13 +273,17 @@ namespace SEPScience.SEP_UI.Windows
 
 		private void OnDestroy()
 		{
+			instance = null;
+
 			GameEvents.onGUIApplicationLauncherReady.Remove(onReady);
 			GameEvents.onGUIApplicationLauncherUnreadifying.Remove(onUnreadifying);
 			GameEvents.OnGameSettingsApplied.Remove(onSettingsApplied);
+			SEP_Utilities.onExperimentActivate.Remove(onExpActivate);
+			SEP_Utilities.onExperimentDeactivate.Remove(onExpDeactivate);
 
 			for (int i = vessels.Count - 1; i >= 0; i--)
 			{
-				SEP_VesselSection v = vessels[i];
+				SEP_VesselSection v = vessels.At(i);
 
 				if (v == null)
 					continue;
@@ -266,6 +301,12 @@ namespace SEPScience.SEP_UI.Windows
 		private void onSettingsApplied()
 		{
 			settings = HighLogic.CurrentGame.Parameters.CustomParams<SEP_GameParameters>();
+
+			if (window != null)
+				window.SetScale(settings.scale);
+
+			if (compactWindow != null)
+				compactWindow.SetScale(settings.scale);
 		}
 		
 		private void onReady()
@@ -308,23 +349,131 @@ namespace SEPScience.SEP_UI.Windows
 
 		private void processVesselSections()
 		{
-			for (int i = 0; i < SEP_Controller.Instance.Vessels.Count; i++)
+			List<Vessel> vs = SEP_Controller.Instance.GetAllVessels();
+
+			for (int i = vs.Count - 1; i >= 0; i--)
 			{
-				Vessel v = SEP_Controller.Instance.Vessels[i];
+				Vessel v = vs[i];
 
 				if (v == null)
 					continue;
 
-				if (!SEP_Controller.Instance.VesselLoaded(v))
-					continue;
-
-				vessels.Add(addVesselSection(v));
+				vessels.Add(v.id, new SEP_VesselSection(v));
 			}
 		}
 
-		private SEP_VesselSection addVesselSection(Vessel v)
+		private void onExpActivate(Vessel v, SEP_ExperimentHandler h)
 		{
-			return new SEP_VesselSection(v);
+			if (v == null)
+				return;
+
+			if (h == null)
+				return;
+
+			if (!vessels.Contains(v.id))
+				return;
+
+			vessels[v.id].AddExperiment(h);
+		}
+
+		private void onExpDeactivate(Vessel v, SEP_ExperimentHandler h)
+		{
+			if (v == null)
+				return;
+
+			if (h == null)
+				return;
+
+			if (!vessels.Contains(v.id))
+				return;
+
+			vessels[v.id].RemoveExperiment(h);
+		}
+
+		public void addVesselSection(Vessel v)
+		{
+			if (v == null)
+				return;
+
+			if (vessels.Contains(v.id))
+				return;
+
+			SEP_VesselSection s = new SEP_VesselSection(v);
+
+			vessels.Add(v.id, s);
+
+			if (_windowMinimized || window == null)
+				return;
+
+			if (!settings.showAllVessels)
+			{
+				string name = v.mainBody.bodyName;
+
+				IList<string> bodies = GetBodies;
+				bool flag = false;
+
+				for (int i = bodies.Count - 1; i >= 0; i--)
+				{
+					string b = bodies[i];
+
+					if (b != name)
+						continue;
+
+					flag = true;
+					break;
+				}
+
+				if (!flag)
+				{
+					window.AddBodySection(name);
+
+					if (bodies.Count <= 0)
+						window.addVesselSection(s);
+				}
+				else
+					window.UpdateBodySection(name, GetBodyVessels(name).Count);
+
+				if (_currentBody != name)
+					return;
+			}
+
+			window.addVesselSection(s);
+		}
+
+		public void removeVesselSection(Vessel v)
+		{
+			if (v == null)
+				return;
+
+			if (!vessels.Contains(v.id))
+				return;
+
+			if (!_windowMinimized && window != null)
+			{
+				if (!settings.showAllVessels)
+				{
+					string name = v.mainBody.bodyName;
+
+					int count = GetBodyVessels(name).Count - 1;
+
+					if (count <= 0)
+						window.RemoveBodySection(name);
+					else
+						window.UpdateBodySection(name, count);
+
+					if (_currentBody != name)
+						return;
+				}
+
+				window.removeVesselSection(vessels[v.id]);
+			}
+			else if (_windowMinimized && compactWindow != null)
+			{
+				if (compactWindow.ID == v.id)
+					compactWindow.GoNext();
+			}
+
+			vessels.Remove(v.id);
 		}
 
 		private void onTrue()
@@ -355,17 +504,20 @@ namespace SEPScience.SEP_UI.Windows
 
 		private Vector3 getAnchor()
 		{
-			if (anchor == null)
+			if (_windowPos == Vector3.zero)
 			{
-				if (button == null)
-					return Vector3.zero;
+				float scale = GameSettings.UI_SCALE;
 
-				anchor = button.GetAnchor();
+				int width = Screen.width;
+				int height = Screen.height;
 
-				anchor.x -= 30;
+				float x = (width - (520 * scale * Scale) ) / scale;
+				float y = ((height / 2) - (100 * scale * Scale)) / scale;
+
+				_windowPos = new Vector3(x, y * -1f, 200);				
 			}
 
-			return anchor;
+			return _windowPos;
 		}
 
 		private void Open()
@@ -392,7 +544,7 @@ namespace SEPScience.SEP_UI.Windows
 				return;
 			}
 
-			GameObject obj = Instantiate(SEP_UI_Loader.WindowPrefab, getAnchor(), Quaternion.identity) as GameObject;
+			GameObject obj = Instantiate(SEP_UI_Loader.WindowPrefab) as GameObject;
 
 			if (obj == null)
 				return;
@@ -407,6 +559,8 @@ namespace SEPScience.SEP_UI.Windows
 			window.setWindow(this);
 
 			window.gameObject.SetActive(true);
+
+			window.SetPosition(getAnchor());
 
 			_isVisible = true;
 		}
@@ -427,7 +581,7 @@ namespace SEPScience.SEP_UI.Windows
 				return;
 			}
 
-			GameObject obj = Instantiate(SEP_UI_Loader.CompactPrefab, getAnchor(), Quaternion.identity) as GameObject;
+			GameObject obj = Instantiate(SEP_UI_Loader.CompactPrefab) as GameObject;
 
 			if (obj == null)
 				return;
@@ -440,6 +594,8 @@ namespace SEPScience.SEP_UI.Windows
 				return;
 
 			compactWindow.setWindow(this);
+
+			compactWindow.SetPosition(getAnchor());
 
 			compactWindow.gameObject.SetActive(true);
 
