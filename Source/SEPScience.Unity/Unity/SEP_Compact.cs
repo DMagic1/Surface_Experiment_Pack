@@ -7,7 +7,7 @@ using UnityEngine.EventSystems;
 
 namespace SEPScience.Unity.Unity
 {
-	public class SEP_Compact : CanvasFader, IBeginDragHandler, IDragHandler, IPointerEnterHandler, IPointerExitHandler
+	public class SEP_Compact : CanvasFader, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerEnterHandler, IPointerExitHandler
 	{
 		[SerializeField]
 		private GameObject VesselPrefab = null;
@@ -18,12 +18,20 @@ namespace SEPScience.Unity.Unity
 		[SerializeField]
 		private float slowFadeDuration = 0.5f;
 
+		private bool dragging;
 		private Vector2 mouseStart;
 		private Vector3 windowStart;
 		private RectTransform rect;
 		
 		private ISEP_Window windowInterface;
 		private SEP_VesselSection currentVessel;
+
+		private Guid id;
+
+		public Guid ID
+		{
+			get { return id; }
+		}
 
 		protected override void Awake()
 		{
@@ -45,6 +53,23 @@ namespace SEPScience.Unity.Unity
 			windowInterface = window;
 
 			CreateVesselSection(windowInterface.CurrentVessel);
+
+			transform.localScale *= window.Scale;
+		}
+
+		public void SetScale(float scale)
+		{
+			Vector3 one = Vector3.one;
+
+			transform.localScale = one * scale;
+		}
+
+		public void SetPosition(Vector3 pos)
+		{
+			if (rect == null)
+				return;
+
+			rect.anchoredPosition = new Vector3(pos.x, pos.y, 1);
 		}
 
 		public void SetNewVessel(IVesselSection vessel)
@@ -58,6 +83,8 @@ namespace SEPScience.Unity.Unity
 
 				Destroy(currentVessel.gameObject);
 			}
+
+			id = vessel.ID;
 
 			CreateVesselSection(vessel);
 		}
@@ -138,6 +165,8 @@ namespace SEPScience.Unity.Unity
 			if (rect == null)
 				return;
 
+			dragging = true;
+
 			mouseStart = eventData.position;
 			windowStart = rect.position;
 		}
@@ -150,6 +179,19 @@ namespace SEPScience.Unity.Unity
 			rect.position = windowStart + (Vector3)(eventData.position - mouseStart);
 		}
 
+		public void OnEndDrag(PointerEventData eventData)
+		{
+			dragging = false;
+
+			if (rect == null)
+				return;
+
+			if (windowInterface == null)
+				return;
+
+			windowInterface.WindowPos = new Vector3(rect.anchoredPosition.x, rect.anchoredPosition.y, windowInterface.WindowPos.z);
+		}
+
 		public void OnPointerEnter(PointerEventData eventData)
 		{
 			FadeIn(false);
@@ -157,7 +199,8 @@ namespace SEPScience.Unity.Unity
 
 		public void OnPointerExit(PointerEventData eventData)
 		{
-			FadeOut();
+			if (!dragging)
+				FadeOut();
 		}
 
 		public void FadeIn(bool overrule)
