@@ -226,7 +226,7 @@ namespace SEPScience
 				{
 					handlers =
 						(from mod in v.FindPartModulesImplementing<ModuleSEPScienceExperiment>()
-						where mod.Handler != null
+						where mod.Handler != null && mod.IsDeployed
 						select mod.Handler).ToList();
 				}
 				else
@@ -346,8 +346,8 @@ namespace SEPScience
 		{
 			int l = experiments.Count;
 
-			if (l > 0)
-				SEP_Utilities.log("Performing SEP background check on {0} experiments at time: {1:N0}", logLevels.log, l , time);
+			//if (l > 0)
+				//SEP_Utilities.log("Performing SEP background check on {0} experiments at time: {1:N0}", logLevels.log, l , time);
 
 			for (int i = 0; i < l; i++)
 			{
@@ -370,7 +370,7 @@ namespace SEPScience
 
 					if (m.usingECResource && !m.vessel.loaded)
 					{
-						if (!m.vessel.HasValidContractObjectives(new List<string> { "Power" }))
+						if (!m.vessel.HasValidContractObjectives(new List<string> { "Generator" }))
 							continue;
 					}
 
@@ -398,9 +398,7 @@ namespace SEPScience
 							if (signal < 0)
 								signal /= 2;
 
-							float adjust = Mathf.Abs(calib - 1) / 0.25f;
-
-							float bonus = calib * signal * (1 / adjust);
+							float bonus = calib * signal;
 
 							calib += bonus;
 						}
@@ -452,42 +450,18 @@ namespace SEPScience
 					else
 					{
 						int level = m.getMaxLevel(false);
-						float science = m.currentMaxScience(level);
 
-						if (science > m.submittedData)
+						if (!dataOnboard(m, level))
 						{
-							bool flag = true;
-							if (m.GetScienceCount() > 0)
+							m.addData(SEP_Utilities.getScienceData(m, m.getExperimentLevel(level), level));
+
+							if (m.vessel.loaded && m.host != null)
 							{
-								ScienceData dat = m.GetData()[0];
-
-								ScienceSubject sub = ResearchAndDevelopment.GetSubjectByID(dat.subjectID);
-
-								if (sub != null)
-								{
-									float d = dat.dataAmount / sub.dataScale;
-
-									//SEPUtilities.log("Science Data value check: {0:N2} - {1:N2}", logLevels.warning, science, d);
-
-									if (science <= d)
-										flag = false;
-								}
-								else
-									flag = false;						
-							}
-
-							if (flag)
-							{
-								m.addData(SEP_Utilities.getScienceData(m, m.getExperimentLevel(level), level));
-
-								if (m.vessel.loaded && m.host != null)
-								{
-									m.host.Events["ReviewDataEvent"].active = true;
-									m.host.Events["TransferDataEvent"].active = m.host.hasContainer;
-									m.host.Events["CollectData"].active = true;
-									if (m.host.Controller != null)
-										m.host.Controller.setCollectEvent();
-								}
+								m.host.Events["ReviewDataEvent"].active = true;
+								m.host.Events["TransferDataEvent"].active = m.host.hasContainer;
+								m.host.Events["CollectData"].active = true;
+								if (m.host.Controller != null)
+									m.host.Controller.setCollectEvent();
 							}
 						}
 					}
@@ -513,6 +487,37 @@ namespace SEPScience
 			}
 		}
 
+		private bool dataOnboard(SEP_ExperimentHandler handler, int level)
+		{
+			float science = handler.currentMaxScience(level);
+
+			if (science > handler.submittedData)
+			{
+				if (handler.GetScienceCount() > 0)
+				{
+					ScienceData dat = handler.GetData()[0];
+
+					ScienceSubject sub = ResearchAndDevelopment.GetSubjectByID(dat.subjectID);
+
+					if (sub != null)
+					{
+						float d = dat.dataAmount / sub.dataScale;
+
+						//SEP_Utilities.log("Science Data value check: {0:N2} - {1:N2}", logLevels.warning, science, d);
+
+						if (science <= d)
+							return true;
+					}
+					else
+						return true;
+				}
+
+				return false;
+			}
+
+			return true;
+		}
+
 		private bool checkTransmission(SEP_ExperimentHandler exp)
 		{
 			int level = exp.getMaxLevel(false);
@@ -526,26 +531,56 @@ namespace SEPScience
 
 		private bool transmitData(SEP_ExperimentHandler exp, int level, float submittedData, float newData)
 		{
+			ScienceData data = SEP_Utilities.getScienceData(exp, exp.getExperimentLevel(level), level);
+
 			if (exp.vessel.loaded)
 			{
-				List<IScienceDataTransmitter> tranList = exp.vessel.FindPartModulesImplementing<IScienceDataTransmitter>();
-				ScienceData data = SEP_Utilities.getScienceData(exp, exp.getExperimentLevel(level), level);
-				if (tranList.Count > 0)
+				IScienceDataTransmitter bestTransmitter = ScienceUtil.GetBestTransmitter(exp.vessel);
+				
+				if (bestTransmitter != null)
 				{
-					SEP_Utilities.log("Sending data to vessel comms. {0} devices to choose from. Will try to pick the best one", logLevels.log, tranList.Count);
-					tranList.OrderBy(ScienceUtil.GetTransmitterScore).First().TransmitData(new List<ScienceData> { data });
+					ScienceExperiment e = exp.getExperimentLevel(level);
+
+					float transmitterCost = getLoadedTransmitterCost(bestTransmitter);
+
+					float ecCost = newData * e.dataScale * transmitterCost;
+
+					if (ecCost > SEP_Utilities.getTotalVesselEC(exp.vessel))
+					{
+						if (!dataOnboard(exp, level))
+						{
+							SEP_Utilities.log("Not enough power for transmissionon this vessel: {1}; saving data: {0}", logLevels.log, data.title, exp.vessel.vesselName);
+							exp.addData(data);
+							if (exp.host != null)
+							{
+								exp.host.Events["ReviewDataEvent"].active = true;
+								exp.host.Events["TransferDataEvent"].active = exp.host.hasContainer;
+								exp.host.Events["CollectData"].active = true;
+								if (exp.host.Controller != null)
+									exp.host.Controller.setCollectEvent();
+							}
+						}
+						return false;
+					}
+
+					SEP_Utilities.log("Sending data to vessel comms: {0}", logLevels.log, data.title);
+					bestTransmitter.TransmitData(new List<ScienceData> { data });
 					return true;
 				}
 				else
 				{
-					exp.addData(data);
-					if (exp.vessel.loaded && exp.host != null)
+					if (!dataOnboard(exp, level))
 					{
-						exp.host.Events["ReviewDataEvent"].active = true;
-						exp.host.Events["TransferDataEvent"].active = exp.host.hasContainer;
-						exp.host.Events["CollectData"].active = true;
-						if (exp.host.Controller != null)
-							exp.host.Controller.setCollectEvent();
+						SEP_Utilities.log("No Comms Devices on this vessel: {1}. Cannot Transmit Data; saving data: {0}", logLevels.log, data.title, exp.vessel.vesselName);
+						exp.addData(data);
+						if (exp.host != null)
+						{
+							exp.host.Events["ReviewDataEvent"].active = true;
+							exp.host.Events["TransferDataEvent"].active = exp.host.hasContainer;
+							exp.host.Events["CollectData"].active = true;
+							if (exp.host.Controller != null)
+								exp.host.Controller.setCollectEvent();
+						}
 					}
 					return false;
 				}
@@ -558,21 +593,29 @@ namespace SEPScience
 
 				if (transmitterCost == null)
 				{
-					exp.addData(SEP_Utilities.getScienceData(exp, exp.getExperimentLevel(level), level));
+					if (!dataOnboard(exp, level))
+					{
+						SEP_Utilities.log("No Comms Devices on this vessel: {1}. Cannot Transmit Data; saving data: {0}", logLevels.log, data.title, exp.vessel.protoVessel.vesselName);
+						exp.addData(data);
+					}
 					return false;
 				}
 
-				//SEPUtilities.log("Transmission Score: {0:N4}EC", logLevels.warning, transmitterCost);
+				//SEP_Utilities.log("Transmission Score: {0:N4}EC", logLevels.warning, transmitterCost);
 
 				ScienceExperiment e = exp.getExperimentLevel(level);
 
 				float ecCost = newData * e.dataScale * (float)transmitterCost;
 
-				//SEPUtilities.log("Transmission Cost: {0:N4}EC", logLevels.warning, ecCost);
+				//SEP_Utilities.log("Transmission Cost: {0:N4}EC", logLevels.warning, ecCost);
 
 				if (ecCost > SEP_Utilities.getTotalVesselEC(exp.vessel.protoVessel))
 				{
-					exp.addData(SEP_Utilities.getScienceData(exp, exp.getExperimentLevel(level), level));
+					if (!dataOnboard(exp, level))
+					{
+						SEP_Utilities.log("Not enough electricity on this vessel: {1}. Cannot Transmit Data; saving data: {0}", logLevels.log, data.title, exp.vessel.protoVessel.vesselName);
+						exp.addData(data);
+					}
 					return false;
 				}
 
@@ -583,7 +626,7 @@ namespace SEPScience
 
 				ResearchAndDevelopment.Instance.SubmitScienceData(newData * sub.dataScale, sub, 1, exp.vessel.protoVessel);
 
-				if (exp.vessel.HasValidContractObjectives(new List<string> { "Power" }))
+				if (exp.vessel.HasValidContractObjectives(new List<string> { "Generator" }))
 					consumeResources(exp.vessel.protoVessel, ecCost);
 				
 				exp.submittedData += (newData - submittedData);
@@ -682,6 +725,35 @@ namespace SEPScience
 			return cost;
 		}
 
+		private float getLoadedTransmitterCost(IScienceDataTransmitter transmitter)
+		{
+			double d = 1000000;
+
+			PartModule pMod = transmitter as PartModule;
+
+			if (pMod != null)
+			{
+				switch(pMod.moduleName)
+				{
+					case "ModuleDataTransmitter":
+						ModuleDataTransmitter tran = pMod as ModuleDataTransmitter;
+
+						if (tran != null)
+							d = tran.packetResourceCost / tran.packetSize;
+						break;
+					case "ModuleRTDataTransmitter":
+						float cost = pMod.Fields["PacketResourceCost"].GetValue<float>(pMod);
+						float size = pMod.Fields["PacketSize"].GetValue<float>(pMod);
+						d = cost / size;
+						break;
+					default:
+						break;
+				}
+			}
+
+			return (float)d;
+		}
+
 		private float getTransmitterCost(List<ConfigNode> nodes)
 		{
 			float f = 1000000;
@@ -754,16 +826,12 @@ namespace SEPScience
 
 					double rAmount = resource.amount;
 
-					//resource.resourceValues.TryGetValue("amount", ref rAmount);
-
 					if (partialEC >= rAmount)
 						partialEC = rAmount;
 
 					rAmount -= partialEC;
 
 					resource.amount = rAmount;
-
-					//resource.resourceValues.SetValue("amount", rAmount.ToString());
 
 					amount -= (float)partialEC;
 
