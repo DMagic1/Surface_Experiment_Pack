@@ -96,7 +96,12 @@ namespace SEPScience.Unity.Unity
 				TotalEC.OnTextUpdate.Invoke(vesselInterface.ECTotal);
 
 			if (Connection != null)
-				Connection.sprite = vesselInterface.SignalSprite;
+			{
+				Sprite connect = vesselInterface.SignalSprite;
+
+				if (connect != null)
+					Connection.sprite = connect;
+			}
 
 			if (StartAll != null && PauseAll != null)
 			{
@@ -193,6 +198,17 @@ namespace SEPScience.Unity.Unity
 				else
 					TransmissionBackground.color = grey;
 			}
+		}
+
+		public void setTransmissionSilent(bool isOn)
+		{
+			if (TransmissionBackground == null)
+				return;
+
+			if (isOn)
+				TransmissionBackground.color = green;
+			else
+				TransmissionBackground.color = grey;		
 		}
 
 		public void setVesselVisible(bool on)
