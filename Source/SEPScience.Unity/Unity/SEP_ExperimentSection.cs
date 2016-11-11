@@ -121,9 +121,9 @@ namespace SEPScience.Unity.Unity
 			if (Remaining != null)
 				Remaining.OnTextUpdate.Invoke(experimentInterface.DaysRemaining);
 
-			UpdateToggleButton(experimentInterface.IsRunning);
+			toggleState = !experimentInterface.IsRunning;
 
-			toggleState = experimentInterface.IsRunning;
+			UpdateToggleButton(experimentInterface.IsRunning);
 
 			if (BaseSlider != null && FrontSlider != null)
 			{
