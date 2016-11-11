@@ -202,7 +202,62 @@ namespace SEPScience.SEP_UI.Windows
 		public bool CanTransmit
 		{
 			get { return _cantransmit; }
-			set { _cantransmit = value; }
+			set
+			{
+				_cantransmit = value;
+
+				if (!_transmitavailable)
+					return;
+
+				if (vessel.loaded)
+				{
+					var controllers = vessel.FindPartModulesImplementing<ModuleSEPStation>();
+
+					for (int i = controllers.Count - 1; i >= 0; i--)
+					{
+						ModuleSEPStation station = controllers[i];
+
+						if (station == null)
+							continue;
+
+						if (station.autoTransmit != value)
+							station.toggleAutoTransmit();
+					}
+				}
+				else
+				{
+					for (int i = experiments.Count - 1; i >= 0; i--)
+					{
+						SEP_ExperimentHandler handler = experiments[i];
+
+						if (handler == null)
+							continue;
+
+						handler.controllerAutoTransmit = value;
+					}
+
+					for (int i = vessel.protoVessel.protoPartSnapshots.Count - 1; i >= 0; i--)
+					{
+						ProtoPartSnapshot part = vessel.protoVessel.protoPartSnapshots[i];
+
+						if (part == null)
+							continue;
+
+						for (int j = part.modules.Count - 1; j >= 0; j--)
+						{
+							ProtoPartModuleSnapshot mod = part.modules[j];
+
+							if (mod == null)
+								continue;
+
+							if (mod.moduleName != "ModuleSEPStation")
+								continue;
+
+							mod.moduleValues.SetValue("autoTransmit", value);
+						}
+					}
+				}
+			}
 		}
 
 		public bool AutoTransmitAvailable
@@ -233,6 +288,14 @@ namespace SEPScience.SEP_UI.Windows
 		public void setParent(SEPScience.Unity.Unity.SEP_VesselSection section)
 		{
 			vesselUISection = section;
+		}
+
+		public void setAutoTransmit(bool isOn)
+		{
+			_cantransmit = isOn;
+
+			if (_transmitavailable && vesselUISection != null)
+				vesselUISection.setTransmissionSilent(isOn);
 		}
 
 		public void StartAll()
@@ -345,6 +408,9 @@ namespace SEPScience.SEP_UI.Windows
 				if (section == null)
 					continue;
 
+				if (section.Handler != h)
+					continue;
+
 				section.OnDestroy();
 				experimentSections.Remove(section);
 				section = null;
@@ -354,7 +420,8 @@ namespace SEPScience.SEP_UI.Windows
 
 			_expcount = getExpCountString();
 
-			vesselUISection.setExpCount(_expcount);
+			if (vesselUISection != null)
+				vesselUISection.setExpCount(_expcount);
 		}
 
 		private void addExperimentSections()
