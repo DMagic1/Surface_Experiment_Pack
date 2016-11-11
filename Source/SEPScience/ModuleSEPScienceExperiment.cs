@@ -482,9 +482,7 @@ namespace SEPScience
 					if (signal < 0)
 						signal /= 2;
 
-					float adjust = Mathf.Abs(calib - 1) / 0.25f;
-
-					float bonus = calib * signal * (1 / adjust);
+					float bonus = calib * signal;
 
 					calib += bonus;
 				}
@@ -503,20 +501,7 @@ namespace SEPScience
 
 			float f = time - nowTime;
 
-			string units = "";
-
-			if (f <= KSPUtil.dateTimeFormatter.Day)
-			{
-				f /= KSPUtil.dateTimeFormatter.Hour;
-				units = "Hours";
-			}
-			else
-			{
-				f /= KSPUtil.dateTimeFormatter.Day;
-				units = "Days";
-			}
-
-			return string.Format("{0:N2} {1}", f, units);
+			return KSPUtil.PrintTime(f, 2, false);
 		}
 
 		private float getNextCompletion(float f)
@@ -676,6 +661,8 @@ namespace SEPScience
 			if (controller != null)
 				controller.addConnectecExperiment(this);
 
+			SEP_Controller.Instance.updateVessel(vessel);
+
 			calibrationLevel = calibration.ToString("P0");
 			
 			Fields["calibrationLevel"].guiActive = true;
@@ -709,7 +696,6 @@ namespace SEPScience
 				return;
 			}
 
-
 			ProtoCrewMember crew = FlightGlobals.ActiveVessel.GetVesselCrew().FirstOrDefault();
 
 			if (crew == null)
@@ -731,7 +717,8 @@ namespace SEPScience
 			if (animated)
 				animator(anim, animationName, -1 * animSpeed, 1);
 
-			controller.removeConnectedExperiment(this);
+			if (controller != null)
+				controller.removeConnectedExperiment(this);
 
 			powerIsProblem = false;
 
@@ -1126,6 +1113,8 @@ namespace SEPScience
 			IScienceDataTransmitter bestTransmitter = ScienceUtil.GetBestTransmitter(vessel);
 			if (bestTransmitter != null)
 			{
+
+				SEP_Utilities.log("Sending data to vessel comms: {0}", logLevels.log, data.title);
 				bestTransmitter.TransmitData(new List<ScienceData> { data });
 				DumpData(data);
 			}
@@ -1175,7 +1164,7 @@ namespace SEPScience
 
 			ScienceData data = handler.GetData()[0];
 
-			results =  ExperimentsResultDialog.DisplayResult(new ExperimentResultDialogPage(part, data, data.baseTransmitValue, data.transmitBonus, false, transmitWarningText, true, new ScienceLabSearch(vessel, data), new Callback<ScienceData>(onDiscardData), new Callback<ScienceData>(onKeepData), new Callback<ScienceData>(onTransmitData), new Callback<ScienceData>(onSendToLab)));
+			results = ExperimentsResultDialog.DisplayResult(new ExperimentResultDialogPage(part, data, data.baseTransmitValue, data.transmitBonus, false, transmitWarningText, true, new ScienceLabSearch(vessel, data), new Callback<ScienceData>(onDiscardData), new Callback<ScienceData>(onKeepData), new Callback<ScienceData>(onTransmitData), new Callback<ScienceData>(onSendToLab)));
 		}
 
 		public void ReviewDataItem(ScienceData data)
