@@ -29,6 +29,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using SEPScience.SEP_UI.Windows;
 using UnityEngine;
 
 namespace SEPScience
@@ -155,9 +156,6 @@ namespace SEPScience
 			}
 
 			//SEPUtilities.log("SEP Station Starting...", logLevels.warning);
-
-			if (!IsDeployed)
-				yield break;
 
 			getConnectedExperiments();
 			setCollectEvent();
@@ -288,6 +286,9 @@ namespace SEPScience
 				if (exp.Handler == null)
 					continue;
 
+				if (!exp.IsDeployed)
+					continue;
+
 				if (exp.Controller != null)
 					continue;
 
@@ -353,7 +354,6 @@ namespace SEPScience
 					continue;
 
 				exp.controllerAutoTransmit = autoTransmit;
-				//exp.controllerCanTransmit = transmissionUpgrade;
 
 				exp.Handler.updateController(this);
 			}
@@ -623,16 +623,15 @@ namespace SEPScience
 
 		[KSPEvent(guiActive = false, guiActiveUnfocused = true, externalToEVAOnly = true, active = false)]
 		public void toggleAutoTransmit()
-		{
-			//if (!transmissionUpgrade)
-			//{
-			//	Events["toggleAutoTransmit"].active = false;
-			//	return;
-			//}
-				
+		{				
 			autoTransmit = !autoTransmit;
 
 			updateConnectedExperiments();
+
+			SEP_VesselSection section = SEP_AppLauncher.Instance.getVesselSection(vessel);
+
+			if (section != null)
+				section.setAutoTransmit(autoTransmit);
 
 			Events["toggleAutoTransmit"].guiName = autoTransmit ? "Turn Auto Transmit Off" : "Turn Auto Transmit On";
 		}
