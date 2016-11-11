@@ -44,7 +44,8 @@ namespace SEPScience
 
 		private void OnDestroy()
 		{
-			SEP_Utilities.onWindowDestroy.Fire(window);
+			if (window != null)
+				SEP_Utilities.onWindowDestroy.Fire(window);
 		}
 	}
 }
