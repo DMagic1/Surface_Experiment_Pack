@@ -65,7 +65,8 @@ namespace SEPScience.SEP_UI.Windows
 
 		public void OnDestroy()
 		{
-			MonoBehaviour.Destroy(experimentUISection);
+			if (experimentUISection != null)
+				MonoBehaviour.Destroy(experimentUISection);
 		}
 
 		public string Name
@@ -177,9 +178,7 @@ namespace SEPScience.SEP_UI.Windows
 					if (signal < 0)
 						signal /= 2;
 
-					float adjust = Mathf.Abs(calib - 1) / 0.25f;
-
-					float bonus = calib * signal * (1 / adjust);
+					float bonus = calib * signal;
 
 					calib += bonus;
 				}
@@ -198,20 +197,7 @@ namespace SEPScience.SEP_UI.Windows
 
 			float f = time - nowTime;
 
-			string units = "";
-
-			if (f <= KSPUtil.dateTimeFormatter.Day)
-			{
-				f /= KSPUtil.dateTimeFormatter.Hour;
-				units = "Hours";
-			}
-			else
-			{
-				f /= KSPUtil.dateTimeFormatter.Day;
-				units = "Days";
-			}
-
-			return string.Format("{0:N0} {1}", f, units);
+			return KSPUtil.PrintTime(f, 2, false);
 		}
 
 		private float getNextCompletion(float f)
