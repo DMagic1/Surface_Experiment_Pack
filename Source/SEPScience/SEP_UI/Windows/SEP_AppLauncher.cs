@@ -47,6 +47,7 @@ namespace SEPScience.SEP_UI.Windows
 		private SEP_Compact compactWindow;
 		private SEP_GameParameters settings;
 
+		private bool processed;
 		private bool windowSticky;
 		private bool _windowMinimized;
 		private bool _isVisible = true;
@@ -71,6 +72,8 @@ namespace SEPScience.SEP_UI.Windows
 					return;
 
 				Close();
+
+				windowSticky = true;
 
 				if (value)
 					OpenCompact();
@@ -242,6 +245,14 @@ namespace SEPScience.SEP_UI.Windows
 
 		}
 
+		public SEP_VesselSection getVesselSection(Vessel v)
+		{
+			if (vessels.Contains(v.id))
+				return vessels[v.id];
+
+			return null;
+		}
+
 		private void Awake()
 		{
 			if (HighLogic.LoadedSceneIsEditor)
@@ -323,6 +334,9 @@ namespace SEPScience.SEP_UI.Windows
 				yield return null;
 
 			button = ApplicationLauncher.Instance.AddModApplication(onTrue, onFalse, onHover, onHoverOut, null, null, ApplicationLauncher.AppScenes.FLIGHT | ApplicationLauncher.AppScenes.MAPVIEW | ApplicationLauncher.AppScenes.SPACECENTER | ApplicationLauncher.AppScenes.TRACKSTATION, icon);
+			
+			if (!processed)
+				button.Disable(false);
 		}
 
 		private void onUnreadifying(GameScenes scene)
@@ -345,6 +359,10 @@ namespace SEPScience.SEP_UI.Windows
 				yield return null;
 
 			processVesselSections();
+
+			processed = true;
+
+			button.Enable(false);
 		}
 
 		private void processVesselSections()
@@ -370,10 +388,12 @@ namespace SEPScience.SEP_UI.Windows
 			if (h == null)
 				return;
 
-			if (!vessels.Contains(v.id))
-				return;
+			if (vessels.Contains(v.id))
+				vessels[v.id].AddExperiment(h);
+			else
+			{
 
-			vessels[v.id].AddExperiment(h);
+			}
 		}
 
 		private void onExpDeactivate(Vessel v, SEP_ExperimentHandler h)
@@ -398,6 +418,8 @@ namespace SEPScience.SEP_UI.Windows
 			if (vessels.Contains(v.id))
 				return;
 
+			IList<string> bodies = GetBodies;
+
 			SEP_VesselSection s = new SEP_VesselSection(v);
 
 			vessels.Add(v.id, s);
@@ -409,7 +431,6 @@ namespace SEPScience.SEP_UI.Windows
 			{
 				string name = v.mainBody.bodyName;
 
-				IList<string> bodies = GetBodies;
 				bool flag = false;
 
 				for (int i = bodies.Count - 1; i >= 0; i--)
@@ -495,10 +516,20 @@ namespace SEPScience.SEP_UI.Windows
 
 		private void onHoverOut()
 		{
-			if (window != null && windowSticky)
-				window.FadeOut();
-
-			if (!windowSticky)
+			if (windowSticky)
+			{
+				if (_windowMinimized)
+				{
+					if (compactWindow != null)
+						compactWindow.FadeOut();
+				}
+				else
+				{
+					if (window != null)
+						window.FadeOut();
+				}
+			}
+			else
 				Close();
 		}
 
@@ -535,11 +566,7 @@ namespace SEPScience.SEP_UI.Windows
 
 			if (window != null)
 			{
-				window.gameObject.SetActive(true);
-
-				window.FadeIn(true);
-
-				_isVisible = true;
+				window.FadeIn(false);
 
 				return;
 			}
@@ -572,11 +599,7 @@ namespace SEPScience.SEP_UI.Windows
 
 			if (compactWindow != null)
 			{
-				compactWindow.gameObject.SetActive(true);
-
-				compactWindow.FadeIn(true);
-
-				_isVisible = true;
+				compactWindow.FadeIn(false);
 
 				return;
 			}
