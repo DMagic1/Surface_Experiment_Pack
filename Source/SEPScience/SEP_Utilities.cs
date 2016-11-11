@@ -106,6 +106,8 @@ namespace SEPScience
 					if (!mod.IsValidContractObjective("Antenna"))
 						continue;
 
+					//log("Antenna Part Found: {0} - Module: {1}", logLevels.log, part.title, mod.moduleName);
+
 					AntennaModules.Add(mod);
 
 					if (!AntennaParts.Contains(part.name))
@@ -254,9 +256,9 @@ namespace SEPScience
 			sub.science = handler.submittedData * sub.subjectValue;
 			sub.scientificValue = 1 - (sub.science / sub.scienceCap);
 
-			data = new ScienceData(exp.baseValue * exp.dataScale, handler.xmitDataScalar, 0, sub.id, sub.title, false, (uint)handler.flightID);
+			data = new ScienceData(exp.baseValue * exp.dataScale, handler.xmitDataScalar, 1, sub.id, sub.title, false, (uint)handler.flightID);
 
-			//log("Science Data Generated: {0}", logLevels.warning, data.subjectID);
+			//log("Science Data Generated: {0} - Data: {1:F2} - Xmit: {2:F2}", logLevels.warning, data.subjectID, data.dataAmount, data.baseTransmitValue);
 
 			return data;
 		}
@@ -601,8 +603,6 @@ namespace SEPScience
 
 					double amount = resource.amount;
 
-					//resource.resourceValues.TryGetValue("amount", ref amount);
-
 					ec += amount;
 				}
 			}
@@ -638,8 +638,6 @@ namespace SEPScience
 						continue;
 
 					double amount = resource.maxAmount;
-
-					//resource.resourceValues.TryGetValue("maxAmount", ref amount);
 
 					ec += amount;
 				}
