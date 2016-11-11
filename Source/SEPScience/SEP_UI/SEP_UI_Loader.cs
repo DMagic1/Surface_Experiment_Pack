@@ -74,7 +74,7 @@ namespace SEPScience.SEP_UI
 			{
 				string path = KSPUtil.ApplicationRootPath + "GameData/SurfaceExperimentPackage/Resources";
 
-				AssetBundle prefabs = AssetBundle.LoadFromFile(path + "/sep_prefab.ksp");
+				AssetBundle prefabs = AssetBundle.LoadFromFile(path + "/sep_prefab");
 
 				if (prefabs != null)
 					loadedPrefabs = prefabs.LoadAllAssets<GameObject>();
